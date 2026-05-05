@@ -522,12 +522,12 @@ function showToast(msg) {
 }
 
 // ─── GEMINI API com fallback ─────────────────────────────────
-const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest'];
+const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'];
 
 async function callGemini(prompt) {
   let lastError = null;
   for (const model of MODELS) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${state.apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${state.apiKey}`;
     const body = {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.3, maxOutputTokens: 4096 }
