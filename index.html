@@ -1,313 +1,843 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fomento.AI - Busca Ativa de Editais</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fomento.AI — Caçador de Editais</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #00c2a8;
+    --accent2: #3b7bff;
+    --text: #e8edf5;
+    --text-muted: #6b7fa3;
+    --danger: #ff5c6a;
+    --warn: #f5a623;
+    --success: #22c55e;
+    --card-glow: 0 0 0 1px var(--border), 0 4px 24px rgba(0,194,168,0.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+  }
+  /* HEADER */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 40px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,14,26,0.92);
+    backdrop-filter: blur(12px);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--accent); }
+  .header-badge {
+    font-size: 11px; color: var(--accent);
+    border: 1px solid rgba(0,194,168,0.3);
+    padding: 3px 10px; border-radius: 20px;
+    background: rgba(0,194,168,0.07);
+  }
+
+  /* MAIN LAYOUT */
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+  /* HERO */
+  .hero { text-align: center; margin-bottom: 48px; }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 14px;
+    background: linear-gradient(135deg, #fff 30%, var(--accent) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero p { color: var(--text-muted); max-width: 520px; margin: 0 auto; line-height: 1.6; }
+
+  /* CONFIG PILL */
+  .config-bar {
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; margin-bottom: 32px; flex-wrap: wrap;
+  }
+  .api-input-wrap {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px; flex: 1; max-width: 440px;
+  }
+  .api-input-wrap label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .api-input-wrap input {
+    flex: 1; background: none; border: none; outline: none;
+    color: var(--text); font-family: 'DM Sans', sans-serif;
+    font-size: 13px; letter-spacing: 0.5px;
+  }
+  .api-status { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; transition: background 0.3s; }
+  .api-status.ok { background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+  /* SEARCH AREA */
+  .search-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: var(--card-glow);
+    margin-bottom: 32px;
+    transition: border-color 0.3s;
+  }
+  .search-card:focus-within { border-color: rgba(0,194,168,0.4); }
+  .search-card label {
+    display: block; font-family: 'Syne', sans-serif; font-weight: 600;
+    font-size: 13px; color: var(--accent); letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 12px;
+  }
+  textarea {
+    width: 100%; min-height: 130px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 15px;
+    padding: 14px 16px; resize: vertical; outline: none;
+    transition: border-color 0.3s; line-height: 1.6;
+  }
+  textarea:focus { border-color: rgba(0,194,168,0.5); }
+  textarea::placeholder { color: var(--text-muted); }
+  .search-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; gap: 12px; flex-wrap: wrap; }
+  .char-count { font-size: 12px; color: var(--text-muted); }
+  .btn-primary {
+    display: flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, var(--accent), #009e88);
+    color: #000; font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 14px; padding: 12px 28px;
+    border: none; border-radius: 10px; cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s; letter-spacing: 0.3px;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* LOADING */
+  .loader {
+    display: none; text-align: center; padding: 48px 24px;
+  }
+  .loader.active { display: block; }
+  .spinner {
+    display: inline-flex; gap: 6px; margin-bottom: 16px;
+  }
+  .spinner span {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); animation: bounce 1.2s infinite;
+  }
+  .spinner span:nth-child(2) { animation-delay: 0.2s; }
+  .spinner span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-10px); opacity: 1; }
+  }
+  .loader p { color: var(--text-muted); font-size: 14px; }
+  .loader .loader-steps { margin-top: 8px; font-size: 12px; color: var(--accent); opacity: 0.7; }
+
+  /* ERROR */
+  .error-box {
+    display: none; background: rgba(255,92,106,0.08);
+    border: 1px solid rgba(255,92,106,0.3);
+    border-radius: 12px; padding: 16px 20px;
+    margin-bottom: 24px; color: #ff8a94;
+  }
+  .error-box.active { display: block; }
+  .error-box strong { display: block; margin-bottom: 4px; color: var(--danger); }
+
+  /* RESULTS */
+  .results-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .results-header h2 {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px;
+  }
+  .results-count {
+    font-size: 12px; color: var(--text-muted);
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 4px 12px; border-radius: 20px;
+  }
+  .editais-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px; margin-bottom: 40px;
+  }
+  .edital-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 22px;
+    box-shadow: var(--card-glow); cursor: pointer;
+    transition: border-color 0.25s, transform 0.2s, box-shadow 0.25s;
+    position: relative; overflow: hidden;
+  }
+  .edital-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .edital-card:hover { border-color: rgba(0,194,168,0.4); transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,194,168,0.12); }
+  .edital-card:hover::before { opacity: 1; }
+  .edital-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,194,168,0.2), var(--card-glow); }
+  .edital-card.selected::before { opacity: 1; }
+  .card-agency {
+    font-size: 11px; font-weight: 600; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
+  }
+  .card-title {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px;
+    line-height: 1.4; margin-bottom: 10px; color: var(--text);
+  }
+  .card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 14px; }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .tag {
+    font-size: 11px; padding: 3px 9px; border-radius: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .tag.highlight { background: rgba(59,123,255,0.1); border-color: rgba(59,123,255,0.3); color: #7aa4ff; }
+  .card-footer { display: flex; align-items: center; justify-content: space-between; }
+  .card-deadline {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; color: var(--warn);
+  }
+  .card-deadline.unknown { color: var(--text-muted); }
+  .btn-select {
+    font-size: 12px; font-weight: 600; padding: 6px 14px;
+    border-radius: 7px; border: 1px solid rgba(0,194,168,0.4);
+    background: rgba(0,194,168,0.08); color: var(--accent);
+    cursor: pointer; transition: all 0.2s; font-family: 'Syne', sans-serif;
+  }
+  .btn-select:hover { background: rgba(0,194,168,0.18); }
+  .btn-select.selected-btn { background: var(--accent); color: #000; border-color: var(--accent); }
+  .match-score {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 12px; color: var(--success);
+    font-weight: 600;
+  }
+
+  /* BUSINESS CASE */
+  .bc-section {
+    display: none; background: var(--surface);
+    border: 1px solid rgba(0,194,168,0.3);
+    border-radius: 16px; padding: 32px;
+    box-shadow: 0 0 40px rgba(0,194,168,0.06);
+    margin-bottom: 40px;
+  }
+  .bc-section.active { display: block; animation: fadeUp 0.4s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .bc-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  .bc-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; }
+  .bc-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .bc-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-secondary {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; padding: 9px 18px;
+    border-radius: 9px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text);
+    cursor: pointer; transition: all 0.2s; font-family: 'Syne', sans-serif;
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-generate {
+    display: flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, var(--accent2), #2a5be8);
+    color: #fff; font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 13px; padding: 9px 20px;
+    border: none; border-radius: 9px; cursor: pointer;
+    transition: opacity 0.2s; letter-spacing: 0.2px;
+  }
+  .btn-generate:hover { opacity: 0.88; }
+  .btn-generate:disabled { opacity: 0.4; cursor: not-allowed; }
+  .bc-content {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px;
+    font-size: 14px; line-height: 1.8; color: #c8d4e8;
+    white-space: pre-wrap; min-height: 80px;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .bc-placeholder {
+    text-align: center; padding: 40px 20px; color: var(--text-muted);
+  }
+  .bc-placeholder .icon { font-size: 36px; margin-bottom: 12px; }
+  .bc-content h2, .bc-content h3 {
+    font-family: 'Syne', sans-serif; color: var(--accent); margin: 16px 0 6px;
+  }
+  .copy-toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--accent); color: #000;
+    font-weight: 700; font-size: 13px; padding: 12px 22px;
+    border-radius: 10px; box-shadow: 0 4px 20px rgba(0,194,168,0.4);
+    opacity: 0; transform: translateY(10px);
+    transition: all 0.3s; z-index: 999; pointer-events: none;
+  }
+  .copy-toast.show { opacity: 1; transform: translateY(0); }
+
+  /* FOOTER */
+  footer {
+    text-align: center; padding: 32px 24px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted); font-size: 12px;
+  }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 5px; }
+  .tab {
+    flex: 1; text-align: center; padding: 9px 16px;
+    border-radius: 9px; cursor: pointer; font-size: 13px;
+    font-weight: 600; font-family: 'Syne', sans-serif;
+    color: var(--text-muted); transition: all 0.2s; border: none; background: none;
+  }
+  .tab.active { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* HISTORY */
+  .history-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px; margin-bottom: 12px;
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  .history-item:hover { border-color: rgba(0,194,168,0.3); }
+  .history-item .hi-date { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+  .history-item .hi-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+  .empty-history { text-align: center; padding: 40px; color: var(--text-muted); font-size: 14px; }
+
+  /* RESPONSIVE */
+  @media (max-width: 640px) {
+    header { padding: 14px 16px; }
+    .container { padding: 24px 14px; }
+    .editais-grid { grid-template-columns: 1fr; }
+    .api-input-wrap { max-width: 100%; }
+  }
+
+  /* ANIMATE IN */
+  .fade-in { animation: fadeIn 0.5s ease both; }
+  .fade-in:nth-child(2) { animation-delay: 0.08s; }
+  .fade-in:nth-child(3) { animation-delay: 0.16s; }
+  .fade-in:nth-child(4) { animation-delay: 0.24s; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* HIGHLIGHT TEXT */
+  mark { background: rgba(0,194,168,0.2); color: var(--accent); border-radius: 3px; padding: 0 2px; }
+</style>
 </head>
-<body class="bg-slate-50 font-sans text-slate-900">
+<body>
 
-    <div id="root"></div>
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎯</div>
+    <div class="logo-text">Fomento<span>.AI</span></div>
+  </div>
+  <div class="header-badge">⚡ Powered by Gemini</div>
+</header>
 
-    <script type="text/babel">
-        // ==============================================================================
-        // ⚙️ CONFIGURAÇÃO (PREENCHA AQUI SUA CHAVE DO GOOGLE AI STUDIO)
-        // ==============================================================================
-        const GEMINI_API_KEY = "AIzaSyDNf1z_K4IhLaEzXWY8MiTpX6msLJvc1Nw";
+<div class="container">
 
-        const { useState } = React;
+  <!-- API KEY CONFIG -->
+  <div class="config-bar">
+    <div class="api-input-wrap">
+      <label>🔑 CHAVE GEMINI</label>
+      <input type="password" id="apiKey" placeholder="Cole sua chave AIzaSy..." oninput="checkApiKey(this.value)" autocomplete="off"/>
+      <div class="api-status" id="apiStatus"></div>
+    </div>
+  </div>
 
-        function App() {
-            const [activeTab, setActiveTab] = useState('busca');
-            const [projectText, setProjectText] = useState('');
-            const [isSearching, setIsSearching] = useState(false);
-            const [foundEdicts, setFoundEdicts] = useState([]);
-            
-            const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
-            const [businessCaseDoc, setBusinessCaseDoc] = useState(null);
-            const [selectedEdict, setSelectedEdict] = useState(null);
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('busca', this)">🔍 Caçador de Editais</button>
+    <button class="tab" onclick="switchTab('bc', this)">📄 Business Case PMI</button>
+    <button class="tab" onclick="switchTab('historico', this)">📋 Histórico</button>
+  </div>
 
-            // ==============================================================================
-            // MOTOR 1: A BUSCA ATIVA NA WEB (Caçador de Editais)
-            // ==============================================================================
-            const searchEdictsWithAI = async () => {
-                if (!projectText.trim()) {
-                    alert("Descreva seu projeto para que a IA saiba o que buscar.");
-                    return;
-                }
-                if (!GEMINI_API_KEY || GEMINI_API_KEY === "COLE_AQUI_A_SUA_CHAVE_DO_GEMINI") {
-                    alert("Por favor, insira sua chave do Gemini no código-fonte.");
-                    return;
-                }
+  <!-- TAB: BUSCA -->
+  <div class="tab-content active" id="tab-busca">
 
-                setIsSearching(true);
-                setFoundEdicts([]);
+    <div class="hero">
+      <h1>Encontre editais de fomento<br>com Inteligência Artificial</h1>
+      <p>Descreva seu projeto em linguagem natural. A IA vasculha a internet e encontra os editais brasileiros mais adequados para você.</p>
+    </div>
 
-                // Utilizando o modelo suportado e mais robusto para a busca
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+    <div class="search-card">
+      <label>📝 Descreva seu projeto</label>
+      <textarea id="projectText" placeholder="Ex: Sou uma startup de agritech no interior de São Paulo, desenvolvemos sensores IoT para monitoramento de irrigação em pequenas propriedades rurais. Buscamos R$ 300 mil para escalar o produto e contratar 3 engenheiros..." oninput="updateCharCount()"></textarea>
+      <div class="search-footer">
+        <div class="char-count"><span id="charCount">0</span> caracteres — quanto mais detalhado, melhor o resultado</div>
+        <button class="btn-primary" id="searchBtn" onclick="buscarEditais()" disabled>
+          <span id="searchBtnIcon">🎯</span>
+          <span id="searchBtnText">Caçar Editais Compatíveis</span>
+        </button>
+      </div>
+    </div>
 
-                const prompt = `
-                    Atue como um Especialista em Captação de Recursos no Brasil.
-                    O usuário tem o seguinte projeto/empresa:
-                    "${projectText}"
+    <div class="loader" id="loader">
+      <div class="spinner"><span></span><span></span><span></span></div>
+      <p>Consultando fontes oficiais em tempo real...</p>
+      <div class="loader-steps" id="loaderStep">Inicializando busca na web...</div>
+    </div>
 
-                    Sua tarefa é pesquisar na internet por EDITAIS DE FOMENTO, SUBVENÇÃO OU FINANCIAMENTO ABERTOS no Brasil (ex: FINEP, CNPq, FAPESP, BNDES, Sebrae, FAPs) que tenham aderência a este projeto.
+    <div class="error-box" id="errorBox">
+      <strong>⚠️ Erro ao buscar editais</strong>
+      <span id="errorMsg">Verifique sua chave de API e tente novamente.</span>
+    </div>
 
-                    Retorne EXATAMENTE UM JSON válido com a seguinte estrutura (NÃO ADICIONE TEXTO ANTES OU DEPOIS DO JSON, APENAS O ARRAY):
-                    [
-                        {
-                            "title": "Nome do Edital",
-                            "agency": "Sigla da Agência (ex: FINEP)",
-                            "description": "Resumo de 2 linhas do edital e por que se aplica ao projeto",
-                            "maxValue": "Valor estimado ou 'Sob consulta'",
-                            "status": "Aberto / Fluxo Contínuo / Previsão"
-                        }
-                    ]
-                    Liste no máximo 4 opções.
-                `;
+    <div id="resultsSection" style="display:none">
+      <div class="results-header">
+        <h2>Editais Encontrados</h2>
+        <span class="results-count" id="resultsCount">0 oportunidades</span>
+      </div>
+      <div class="editais-grid" id="editaisGrid"></div>
+    </div>
 
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            contents: [{ parts: [{ text: prompt }] }],
-                            // Formato correto para habilitar o Google Search Grounding
-                            tools: [{ "google_search": {} }],
-                            generationConfig: { responseMimeType: "application/json" }
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.error) {
-                        alert("Erro do Google API: " + data.error.message);
-                        setIsSearching(false);
-                        return;
-                    }
+  </div>
 
-                    // Limpeza robusta do retorno para garantir que o JSON faz o parse sem quebrar a tela
-                    let resultText = data.candidates[0].content.parts[0].text;
-                    resultText = resultText.replace(/```json/gi, '').replace(/```/g, '').trim();
-                    
-                    setFoundEdicts(JSON.parse(resultText));
-                } catch (error) {
-                    console.error("Erro completo:", error);
-                    alert("A IA respondeu num formato inesperado ou houve falha na ligação. Verifique o console para detalhes.");
-                } finally {
-                    setIsSearching(false);
-                }
-            };
+  <!-- TAB: BUSINESS CASE -->
+  <div class="tab-content" id="tab-bc">
+    <div class="bc-section active" id="bcSection">
+      <div class="bc-header">
+        <div>
+          <div class="bc-title">Business Case — Padrão PMI</div>
+          <div class="bc-subtitle" id="bcSubtitle">Selecione um edital na aba "Caçador" para gerar o documento</div>
+        </div>
+        <div class="bc-actions">
+          <button class="btn-secondary" id="copyBtn" onclick="copiarBC()" disabled>📋 Copiar</button>
+          <button class="btn-generate" id="generateBtn" onclick="gerarBusinessCase()" disabled>
+            <span id="generateBtnIcon">✨</span>
+            <span id="generateBtnText">Gerar Business Case</span>
+          </button>
+        </div>
+      </div>
 
-            // ==============================================================================
-            // MOTOR 2: O GERADOR DE BUSINESS CASE (Padrão PMI)
-            // ==============================================================================
-            const generateBusinessCase = async (edict) => {
-                setIsGeneratingDoc(true);
-                setSelectedEdict(edict);
-                setActiveTab('docs');
-                setBusinessCaseDoc(null);
+      <div class="bc-content" id="bcContent">
+        <div class="bc-placeholder">
+          <div class="icon">📄</div>
+          <div>Nenhum edital selecionado ainda.<br>Vá até a aba <strong>Caçador de Editais</strong> e escolha uma oportunidade.</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+  <!-- TAB: HISTÓRICO -->
+  <div class="tab-content" id="tab-historico">
+    <div id="historicoList"></div>
+  </div>
 
-                const prompt = `
-                    Você é um Gerente de Projetos certificado (PMP).
-                    Crie um rascunho de 'Business Case' (Caso de Negócios) alinhado rigorosamente ao PMBOK e ao Padrão P5 de Sustentabilidade, visando aprovação neste edital específico:
-                    
-                    DADOS DO EDITAL ENCONTRADO:
-                    Agência: ${edict.agency}
-                    Título: ${edict.title}
-                    Teto: ${edict.maxValue}
+</div>
 
-                    PROJETO DO USUÁRIO:
-                    ${projectText}
+<footer>
+  Fomento.AI &nbsp;·&nbsp; Dados em tempo real via Gemini + Google Search &nbsp;·&nbsp;
+  <a href="https://aistudio.google.com" target="_blank">Obtenha sua chave gratuita →</a>
+</footer>
 
-                    ESTRUTURA OBRIGATÓRIA (Use formatação Markdown):
-                    # Business Case: [Crie um Título para o Projeto]
-                    **Alvo:** Edital ${edict.title} - ${edict.agency}
+<div class="copy-toast" id="copyToast">✓ Copiado para a área de transferência!</div>
 
-                    ## 1. Necessidade de Negócios (Business Need)
-                    [Justifique a razão fundamental do projeto baseado na tese do edital]
+<script>
+// ─── STATE ───────────────────────────────────────────────────
+const state = {
+  apiKey: '',
+  projectText: '',
+  editais: [],
+  selectedEdital: null,
+  bcText: '',
+  history: JSON.parse(localStorage.getItem('fomento_history') || '[]')
+};
 
-                    ## 2. Análise da Situação e Alternativas
-                    [Qual a dor resolvida? Por que esta é a melhor opção?]
+// ─── UI HELPERS ───────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'historico') renderHistorico();
+}
 
-                    ## 3. Benefícios Esperados (Incluindo Sustentabilidade P5)
-                    [Tangíveis e Intangíveis (Impacto social, governança, ambiental)]
+function checkApiKey(val) {
+  state.apiKey = val.trim();
+  const status = document.getElementById('apiStatus');
+  const btn = document.getElementById('searchBtn');
+  if (state.apiKey.startsWith('AIzaSy') && state.apiKey.length > 20) {
+    status.className = 'api-status ok';
+    updateSearchBtn();
+  } else {
+    status.className = 'api-status';
+    btn.disabled = true;
+  }
+}
 
-                    ## 4. Principais Riscos e Restrições
-                    [Mapeie riscos de alto nível de implantação técnica]
+function updateSearchBtn() {
+  const btn = document.getElementById('searchBtn');
+  const text = document.getElementById('projectText').value.trim();
+  btn.disabled = !(state.apiKey.startsWith('AIzaSy') && text.length > 20);
+}
 
-                    ## 5. Estimativa de Orçamento e Cronograma
-                    [Como o recurso será aplicado em fases do ciclo de vida]
+function updateCharCount() {
+  const txt = document.getElementById('projectText').value;
+  document.getElementById('charCount').textContent = txt.length;
+  state.projectText = txt;
+  updateSearchBtn();
+}
 
-                    ## 6. Critérios de Sucesso
-                    [Métricas que provarão o encerramento bem-sucedido]
-                `;
+function setLoading(active, step) {
+  const loader = document.getElementById('loader');
+  if (active) {
+    loader.className = 'loader active';
+    document.getElementById('loaderStep').textContent = step || 'Buscando...';
+    document.getElementById('searchBtn').disabled = true;
+    document.getElementById('searchBtnText').textContent = 'Buscando...';
+    document.getElementById('errorBox').className = 'error-box';
+    document.getElementById('resultsSection').style.display = 'none';
+  } else {
+    loader.className = 'loader';
+    document.getElementById('searchBtnText').textContent = 'Caçar Editais Compatíveis';
+    document.getElementById('searchBtn').disabled = false;
+  }
+}
 
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                    });
-                    const data = await response.json();
-                    
-                    if (data.error) {
-                        alert("Erro do Google API: " + data.error.message);
-                        setIsGeneratingDoc(false);
-                        return;
-                    }
+function showError(msg) {
+  document.getElementById('errorBox').className = 'error-box active';
+  document.getElementById('errorMsg').textContent = msg;
+  setLoading(false);
+}
 
-                    setBusinessCaseDoc(data.candidates[0].content.parts[0].text);
-                } catch (error) {
-                    setBusinessCaseDoc("Ocorreu um erro ao gerar o documento.");
-                } finally {
-                    setIsGeneratingDoc(false);
-                }
-            };
+function showToast(msg) {
+  const t = document.getElementById('copyToast');
+  t.textContent = msg || '✓ Copiado!';
+  t.className = 'copy-toast show';
+  setTimeout(() => t.className = 'copy-toast', 2500);
+}
 
-            const copyToClipboard = () => {
-                if(businessCaseDoc) {
-                    navigator.clipboard.writeText(businessCaseDoc);
-                    alert("Copiado com sucesso!");
-                }
-            };
+// ─── GEMINI API ───────────────────────────────────────────────
+async function callGemini(prompt, useSearch = false) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${state.apiKey}`;
 
-            return (
-                <div className="min-h-screen flex flex-col md:flex-row">
-                    {/* Sidebar */}
-                    <aside className="w-full md:w-64 bg-slate-900 text-white flex flex-col">
-                        <div className="p-6">
-                            <h1 className="text-2xl font-bold flex items-center text-blue-400">
-                                <i className="fas fa-satellite-dish mr-2"></i> Fomento.AI
-                            </h1>
-                            <p className="text-xs text-slate-400 mt-1">Busca Ativa na Web</p>
-                        </div>
-                        <nav className="flex-1 px-4 space-y-2 mt-4">
-                            <button onClick={() => setActiveTab('busca')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${activeTab === 'busca' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                                <i className="fas fa-search w-6"></i> Caçador de Editais
-                            </button>
-                            <button onClick={() => setActiveTab('docs')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${activeTab === 'docs' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                                <i className="fas fa-file-contract w-6"></i> Projetos PMI
-                            </button>
-                        </nav>
-                    </aside>
+  const body = {
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.4, maxOutputTokens: 4096 }
+  };
 
-                    {/* Main Content */}
-                    <main className="flex-1 p-6 md:p-10 overflow-y-auto">
-                        
-                        {/* ABA: BUSCA ATIVA */}
-                        {activeTab === 'busca' && (
-                            <div className="max-w-4xl mx-auto">
-                                <div className="mb-8">
-                                    <h2 className="text-3xl font-bold text-slate-800">Motor de Busca por Texto</h2>
-                                    <p className="text-slate-500 mt-1">Descreva seu projeto. A IA vai vasculhar a web atrás dos melhores editais abertos no Brasil para o seu perfil.</p>
-                                </div>
+  if (useSearch) {
+    body.tools = [{ google_search: {} }];
+  }
 
-                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Qual é a sua ideia, pesquisa ou negócio?</label>
-                                    <textarea 
-                                        rows="5"
-                                        value={projectText}
-                                        onChange={(e) => setProjectText(e.target.value)}
-                                        placeholder="Cole aqui o descritivo do que você quer financiar, tecnologias envolvidas e o impacto gerado..."
-                                        className="w-full border border-slate-300 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:outline-none mb-4"
-                                    ></textarea>
-                                    <button 
-                                        onClick={searchEdictsWithAI}
-                                        disabled={isSearching}
-                                        className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-all disabled:opacity-70 flex items-center justify-center"
-                                    >
-                                        {isSearching ? <i className="fas fa-circle-notch fa-spin mr-2"></i> : <i className="fas fa-radar mr-2"></i>}
-                                        {isSearching ? 'Buscando Editais na Web...' : 'Caçar Editais Compatíveis'}
-                                    </button>
-                                </div>
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
 
-                                {/* Resultados da Busca */}
-                                {foundEdicts.length > 0 && (
-                                    <div className="space-y-4">
-                                        <h3 className="text-xl font-bold text-slate-800 border-b pb-2">Oportunidades Encontradas</h3>
-                                        {foundEdicts.map((edict, idx) => (
-                                            <div key={idx} className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex flex-col md:flex-row gap-6">
-                                                <div className="md:w-3/4">
-                                                    <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full uppercase mr-2">{edict.agency}</span>
-                                                    <span className="text-green-600 text-xs font-bold px-3 py-1 bg-green-50 rounded-full">{edict.status}</span>
-                                                    <h4 className="text-lg font-bold text-slate-900 mt-3 mb-2">{edict.title}</h4>
-                                                    <p className="text-slate-600 text-sm">{edict.description}</p>
-                                                    <p className="text-sm font-bold text-slate-800 mt-2"><i className="fas fa-coins text-amber-500 mr-1"></i> Estimativa: {edict.maxValue}</p>
-                                                </div>
-                                                <div className="md:w-1/4 flex items-center">
-                                                    <button 
-                                                        onClick={() => generateBusinessCase(edict)}
-                                                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-lg text-sm transition"
-                                                    >
-                                                        Gerar Business Case
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = err?.error?.message || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
 
-                        {/* ABA: GERADOR DE DOCS (PMI) */}
-                        {activeTab === 'docs' && (
-                            <div className="max-w-4xl mx-auto h-full flex flex-col">
-                                <div className="mb-6">
-                                    <h2 className="text-3xl font-bold text-slate-800"><i className="fas fa-file-contract text-blue-600 mr-2"></i> Documentação do Projeto</h2>
-                                    <p className="text-slate-500">Estruturação estratégica baseada nas boas práticas do Guia PMBOK.</p>
-                                </div>
+  const data = await res.json();
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  return parts.filter(p => p.text).map(p => p.text).join('\n').trim();
+}
 
-                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
-                                    {isGeneratingDoc ? (
-                                        <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
-                                            <i className="fas fa-circle-notch fa-spin text-5xl text-blue-600 mb-6"></i>
-                                            <h3 className="text-xl font-bold text-slate-800">Elaborando Business Case...</h3>
-                                        </div>
-                                    ) : businessCaseDoc ? (
-                                        <>
-                                            <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
-                                                <div>
-                                                    <span className="text-xs font-bold text-slate-500 uppercase block">Edital Selecionado</span>
-                                                    <span className="font-bold text-slate-800">{selectedEdict?.title}</span>
-                                                </div>
-                                                <button onClick={copyToClipboard} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center">
-                                                    <i className="far fa-copy mr-2"></i> Copiar Texto
-                                                </button>
-                                            </div>
-                                            <div className="p-8 overflow-y-auto">
-                                                <div 
-                                                    className="prose max-w-none text-slate-800 font-sans"
-                                                    dangerouslySetInnerHTML={{ 
-                                                        __html: businessCaseDoc.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/## (.*?)<br\/>/g, '<h2 class="text-xl font-bold mt-8 mb-4 text-slate-900 border-b pb-2">$1</h2>').replace(/# (.*?)<br\/>/g, '<h1 class="text-2xl font-black mb-6 text-blue-900">$1</h1>')
-                                                    }} 
-                                                />
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="flex-1 flex flex-col items-center justify-center p-10 text-slate-400">
-                                            <i className="fas fa-file-signature text-6xl mb-4 opacity-50"></i>
-                                            <h3 className="text-xl font-bold text-slate-700">Nenhum documento gerado.</h3>
-                                            <p className="mt-2 text-center">Faça uma busca na web pela aba "Caçador de Editais" e escolha uma oportunidade.</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </main>
-                </div>
-            );
-        }
+// ─── BUSCAR EDITAIS ───────────────────────────────────────────
+async function buscarEditais() {
+  const txt = document.getElementById('projectText').value.trim();
+  if (!txt || !state.apiKey) return;
+  state.projectText = txt;
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+  setLoading(true, 'Enviando para o Gemini com busca ativa...');
+
+  const loaderMessages = [
+    'Consultando FINEP, CNPq, FAPESP...',
+    'Analisando compatibilidade do projeto...',
+    'Verificando editais abertos...',
+    'Calculando aderência aos critérios...'
+  ];
+  let idx = 0;
+  const loaderInterval = setInterval(() => {
+    document.getElementById('loaderStep').textContent = loaderMessages[idx++ % loaderMessages.length];
+  }, 2200);
+
+  const prompt = `Você é um especialista em fomento à inovação no Brasil. Usando sua busca na web, encontre editais de fomento ABERTOS ou com inscrições previstas para os próximos meses que sejam compatíveis com o projeto descrito abaixo.
+
+PROJETO DO USUÁRIO:
+${txt}
+
+INSTRUÇÕES:
+1. Pesquise editais atuais de: FINEP, CNPq, FAPESP, FAPs estaduais, BNDES, Sebrae, EMBRAPII, MCTI e ministérios setoriais
+2. Retorne de 4 a 6 editais mais compatíveis
+3. Priorize editais com prazo de inscrição em aberto ou prestes a abrir
+
+Responda APENAS com um JSON válido, sem nenhum texto antes ou depois, sem markdown, sem \`\`\`. O formato deve ser EXATAMENTE:
+[
+  {
+    "agencia": "Nome da agência (ex: FINEP)",
+    "titulo": "Nome do edital",
+    "descricao": "Resumo em 2 frases do que financia e para quem",
+    "valorMax": "Valor máximo disponível (ex: R$ 500 mil, ou Não informado)",
+    "prazo": "Prazo de inscrição (ex: 30/06/2025, ou Em breve, ou Consulte o site)",
+    "tags": ["tag1", "tag2", "tag3"],
+    "link": "URL oficial se disponível ou string vazia",
+    "compatibilidade": "Alta, Média ou Baixa",
+    "motivo": "Por que este edital é compatível com o projeto em 1 frase curta"
+  }
+]`;
+
+  try {
+    const raw = await callGemini(prompt, true);
+    clearInterval(loaderInterval);
+
+    // Clean JSON - remove markdown fences if present
+    let cleaned = raw
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim();
+
+    // Extract JSON array
+    const start = cleaned.indexOf('[');
+    const end = cleaned.lastIndexOf(']');
+    if (start === -1 || end === -1) throw new Error('Formato inválido retornado pela IA. Tente novamente.');
+    cleaned = cleaned.slice(start, end + 1);
+
+    let editais;
+    try {
+      editais = JSON.parse(cleaned);
+    } catch {
+      throw new Error('Não foi possível interpretar a resposta da IA. Tente descrever o projeto com mais detalhes.');
+    }
+
+    if (!Array.isArray(editais) || editais.length === 0) {
+      throw new Error('Nenhum edital compatível encontrado. Tente reformular a descrição do projeto.');
+    }
+
+    state.editais = editais;
+    setLoading(false);
+    renderEditais(editais);
+    salvarHistorico(txt, editais);
+
+  } catch (err) {
+    clearInterval(loaderInterval);
+    let msg = err.message || 'Erro desconhecido.';
+    if (msg.includes('API_KEY_INVALID') || msg.includes('API key')) {
+      msg = 'Chave de API inválida. Verifique se colou corretamente (começa com AIzaSy...).';
+    } else if (msg.includes('PERMISSION_DENIED')) {
+      msg = 'Permissão negada. Ative a Generative Language API no Google AI Studio e certifique que a chave tem acesso.';
+    } else if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
+      msg = 'Cota da API atingida. Aguarde alguns minutos ou verifique seus limites no Google AI Studio.';
+    }
+    showError(msg);
+  }
+}
+
+// ─── RENDER EDITAIS ───────────────────────────────────────────
+function renderEditais(editais) {
+  const grid = document.getElementById('editaisGrid');
+  const section = document.getElementById('resultsSection');
+  document.getElementById('resultsCount').textContent = `${editais.length} oportunidade${editais.length !== 1 ? 's' : ''} encontrada${editais.length !== 1 ? 's' : ''}`;
+  section.style.display = 'block';
+
+  const compatColors = { 'Alta': 'var(--success)', 'Média': 'var(--warn)', 'Baixa': 'var(--danger)' };
+  const compatEmoji = { 'Alta': '🟢', 'Média': '🟡', 'Baixa': '🔴' };
+
+  grid.innerHTML = editais.map((e, i) => `
+    <div class="edital-card fade-in" id="card-${i}" onclick="selecionarEdital(${i})">
+      <div class="card-agency">${e.agencia || 'Agência'}</div>
+      <div class="card-title">${e.titulo || 'Edital'}</div>
+      <div class="card-desc">${e.descricao || ''}</div>
+      <div class="card-tags">
+        ${(e.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
+        <span class="tag highlight">💰 ${e.valorMax || 'Consulte'}</span>
+      </div>
+      <div class="card-footer">
+        <div class="card-deadline ${e.prazo && !e.prazo.toLowerCase().includes('consulte') ? '' : 'unknown'}">
+          📅 ${e.prazo || 'Consulte o site'}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="match-score" style="color:${compatColors[e.compatibilidade] || 'var(--text-muted)'}">
+            ${compatEmoji[e.compatibilidade] || '⚪'} ${e.compatibilidade || ''}
+          </span>
+          <button class="btn-select" id="btn-${i}">Selecionar</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selecionarEdital(idx) {
+  // Deselect all
+  document.querySelectorAll('.edital-card').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.btn-select').forEach(b => { b.textContent = 'Selecionar'; b.classList.remove('selected-btn'); });
+
+  // Select
+  document.getElementById(`card-${idx}`).classList.add('selected');
+  const btn = document.getElementById(`btn-${idx}`);
+  btn.textContent = '✓ Selecionado';
+  btn.classList.add('selected-btn');
+
+  state.selectedEdital = state.editais[idx];
+  state.bcText = '';
+
+  // Update BC tab
+  const e = state.selectedEdital;
+  document.getElementById('bcSubtitle').textContent = `${e.agencia} — ${e.titulo}`;
+  document.getElementById('generateBtn').disabled = false;
+  document.getElementById('copyBtn').disabled = true;
+  document.getElementById('bcContent').innerHTML = `
+    <div class="bc-placeholder">
+      <div class="icon">✨</div>
+      <div><strong>${e.titulo}</strong> selecionado!<br>Clique em <strong>"Gerar Business Case"</strong> para criar o documento PMI.</div>
+    </div>`;
+}
+
+// ─── BUSINESS CASE ────────────────────────────────────────────
+async function gerarBusinessCase() {
+  if (!state.selectedEdital || !state.projectText) return;
+  const e = state.selectedEdital;
+
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  document.getElementById('generateBtnIcon').textContent = '⏳';
+  document.getElementById('generateBtnText').textContent = 'Gerando...';
+  document.getElementById('copyBtn').disabled = true;
+
+  const prompt = `Você é um consultor sênior em gestão de projetos certificado pelo PMI. Crie um Business Case completo e profissional seguindo estritamente as diretrizes do PMBOK 7ª Edição.
+
+## DADOS DO PROJETO
+${state.projectText}
+
+## EDITAL SELECIONADO
+- Agência: ${e.agencia}
+- Edital: ${e.titulo}
+- Valor máximo: ${e.valorMax}
+- Prazo: ${e.prazo}
+- Por que é compatível: ${e.motivo}
+
+## INSTRUÇÕES DE FORMATAÇÃO
+Crie o Business Case com as seguintes seções, usando os cabeçalhos exatamente como indicado:
+
+# BUSINESS CASE — ${e.titulo.toUpperCase()}
+
+## 1. IDENTIFICAÇÃO DO PROJETO
+(Patrocinador, gerente proposto, data de elaboração, versão)
+
+## 2. JUSTIFICATIVA DE NEGÓCIO (Business Need)
+(Qual problema/oportunidade motiva este projeto? Por que agora? Alinhamento estratégico)
+
+## 3. ANÁLISE DA SITUAÇÃO ATUAL
+(Situação atual, gap identificado, stakeholders impactados)
+
+## 4. OPÇÕES ANALISADAS
+(Apresente 3 opções: Não fazer nada / Solução mínima / Solução proposta — recomende a melhor)
+
+## 5. BENEFÍCIOS ESPERADOS
+**Benefícios Tangíveis:**
+- (Financeiros, quantificáveis)
+
+**Benefícios Intangíveis:**
+- (Reputação, capacidade, sustentabilidade — incluir critérios P5 de sustentabilidade: People, Planet, Prosperity, Peace, Partnership)
+
+## 6. ESTIMATIVA DE CUSTOS E CRONOGRAMA
+(Tabela: fase, prazo, custo estimado, recurso responsável)
+
+## 7. RISCOS E RESTRIÇÕES
+(Top 5 riscos com probabilidade/impacto e resposta planejada. Restrições técnicas e regulatórias.)
+
+## 8. CRITÉRIOS DE SUCESSO E KPIs
+(Métricas mensuráveis alinhadas ao edital — o que precisa acontecer para o projeto ser aprovado e considerado bem-sucedido)
+
+## 9. RECOMENDAÇÃO E PRÓXIMOS PASSOS
+(Recomendação clara, próximas ações com responsável e prazo)
+
+---
+Seja específico, profissional e use dados concretos onde possível. O documento deve demonstrar claramente por que este projeto merece o fomento do edital ${e.agencia}.`;
+
+  try {
+    const texto = await callGemini(prompt, false);
+    state.bcText = texto;
+
+    // Render with basic markdown
+    const html = texto
+      .replace(/^# (.+)$/gm, '<h2 style="color:var(--accent);font-family:Syne,sans-serif;font-size:20px;margin:8px 0 16px;">$1</h2>')
+      .replace(/^## (.+)$/gm, '<h3 style="color:var(--accent2);font-family:Syne,sans-serif;font-size:15px;margin:20px 0 8px;border-bottom:1px solid var(--border);padding-bottom:6px;">$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text)">$1</strong>')
+      .replace(/^- (.+)$/gm, '<div style="padding-left:16px;margin:3px 0;color:var(--text-muted)">• $1</div>')
+      .replace(/\n\n/g, '<br/><br/>');
+
+    document.getElementById('bcContent').innerHTML = html;
+    document.getElementById('copyBtn').disabled = false;
+
+  } catch (err) {
+    document.getElementById('bcContent').innerHTML = `<span style="color:var(--danger)">Erro ao gerar: ${err.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    document.getElementById('generateBtnIcon').textContent = '✨';
+    document.getElementById('generateBtnText').textContent = 'Gerar Business Case';
+  }
+}
+
+function copiarBC() {
+  if (!state.bcText) return;
+  navigator.clipboard.writeText(state.bcText).then(() => {
+    showToast('✓ Business Case copiado! Cole no Google Docs.');
+  });
+}
+
+// ─── HISTORY ─────────────────────────────────────────────────
+function salvarHistorico(texto, editais) {
+  const item = {
+    id: Date.now(),
+    data: new Date().toLocaleString('pt-BR'),
+    texto: texto.substring(0, 120) + (texto.length > 120 ? '...' : ''),
+    count: editais.length
+  };
+  state.history.unshift(item);
+  if (state.history.length > 20) state.history = state.history.slice(0, 20);
+  localStorage.setItem('fomento_history', JSON.stringify(state.history));
+}
+
+function renderHistorico() {
+  const el = document.getElementById('historicoList');
+  if (!state.history.length) {
+    el.innerHTML = '<div class="empty-history">🕐 Nenhuma busca realizada ainda.<br>Use o Caçador de Editais para começar!</div>';
+    return;
+  }
+  el.innerHTML = state.history.map(h => `
+    <div class="history-item">
+      <div class="hi-date">📅 ${h.data} — ${h.count} edital(is) encontrado(s)</div>
+      <div class="hi-text">${h.texto}</div>
+    </div>
+  `).join('');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────
+(function init() {
+  // Load saved key
+  const saved = localStorage.getItem('fomento_apikey');
+  if (saved) {
+    document.getElementById('apiKey').value = saved;
+    checkApiKey(saved);
+  }
+  // Save key on input
+  document.getElementById('apiKey').addEventListener('blur', () => {
+    if (state.apiKey) localStorage.setItem('fomento_apikey', state.apiKey);
+  });
+  // Enter to search
+  document.getElementById('projectText').addEventListener('keydown', e => {
+    if (e.ctrlKey && e.key === 'Enter') buscarEditais();
+  });
+})();
+</script>
 </body>
 </html>
