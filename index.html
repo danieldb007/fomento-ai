@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fomento.AI - Powered by ChatGPT</title>
+    <title>Fomento.AI - Busca Ativa (Gemini Free Tier)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -16,10 +16,9 @@
 
     <script type="text/babel">
         // ==============================================================================
-        // ⚙️ CONFIGURAÇÃO (PREENCHA AQUI SUA CHAVE DA OPENAI / CHATGPT)
+        // ⚙️ A SUA CHAVE DO GEMINI (Já inserida conforme a sua mensagem)
         // ==============================================================================
-        // A chave da OpenAI começa com "sk-..."
-        const OPENAI_API_KEY = "COLE_AQUI_A_SUA_CHAVE_DA_OPENAI";
+        const GEMINI_API_KEY = "AIzaSyDNf1z_K4IhLaEzXWY8MiTpX6msLJvc1Nw";
 
         const { useState } = React;
 
@@ -34,81 +33,72 @@
             const [selectedEdict, setSelectedEdict] = useState(null);
 
             // ==============================================================================
-            // MOTOR 1: A BUSCA (Usando ChatGPT - GPT-4o-mini)
+            // MOTOR 1: A BUSCA (Conhecimento Nativo do Gemini)
             // ==============================================================================
             const searchEdictsWithAI = async () => {
                 if (!projectText.trim()) {
-                    alert("Descreva seu projeto para que a IA saiba o que buscar.");
-                    return;
-                }
-                if (!OPENAI_API_KEY || OPENAI_API_KEY === "COLE_AQUI_A_SUA_CHAVE_DA_OPENAI") {
-                    alert("Por favor, insira sua chave da OpenAI no código-fonte.");
+                    alert("Descreva o seu projeto para que a Inteligência Artificial saiba o que procurar.");
                     return;
                 }
 
                 setIsSearching(true);
                 setFoundEdicts([]);
 
-                const url = "https://api.openai.com/v1/chat/completions";
+                // Utilizando o Gemini 1.5 Flash (Rápido, estável e gratuito)
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-                const systemPrompt = `
-                    Você é um Especialista em Captação de Recursos e Editais de Fomento no Brasil.
-                    Sua tarefa é analisar o projeto do usuário e sugerir 3 a 4 linhas de fomento ou editais brasileiros (ex: FINEP, CNPq, FAPESP, BNDES, SebraeTec) altamente compatíveis.
-                    
-                    Você DEVE responder EXATAMENTE neste formato JSON:
-                    {
-                        "editais": [
-                            {
-                                "title": "Nome da Linha ou Edital",
-                                "agency": "Agência",
-                                "description": "Breve resumo da aderência",
-                                "maxValue": "Valor estimado",
-                                "status": "Fluxo Contínuo / Previsão"
-                            }
-                        ]
-                    }
+                const prompt = `
+                    Atue como um Especialista em Captação de Recursos e Fomento à Inovação no Brasil.
+                    Analise o seguinte projeto/empresa:
+                    "${projectText}"
+
+                    Com base no seu vasto conhecimento sobre o ecossistema brasileiro, sugira 3 a 4 linhas de fomento ou editais governamentais (ex: FINEP, CNPq, FAPESP, BNDES, SebraeTec, Embrapii) altamente compatíveis com este perfil.
+
+                    Retorne EXATAMENTE UM JSON válido com a seguinte estrutura (NÃO ADICIONE TEXTO ANTES OU DEPOIS DO JSON):
+                    [
+                        {
+                            "title": "Nome da Linha ou Edital",
+                            "agency": "Sigla da Agência (ex: FINEP)",
+                            "description": "Resumo de 2 linhas do edital e por que se aplica ao projeto",
+                            "maxValue": "Valor estimado ou 'Sob consulta'",
+                            "status": "Fluxo Contínuo / Aberto / Previsão"
+                        }
+                    ]
                 `;
 
                 try {
                     const response = await fetch(url, {
                         method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${OPENAI_API_KEY}`
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
-                            model: "gpt-4o-mini", // Modelo rápido e eficiente do ChatGPT
-                            response_format: { type: "json_object" }, // Força a saída em JSON
-                            messages: [
-                                { role: "system", content: systemPrompt },
-                                { role: "user", content: `Projeto: ${projectText}` }
-                            ],
-                            temperature: 0.3
+                            contents: [{ parts: [{ text: prompt }] }],
+                            // Forçamos a saída para ser obrigatoriamente um JSON para não quebrar a aplicação
+                            generationConfig: { responseMimeType: "application/json" }
                         })
                     });
                     
                     const data = await response.json();
                     
                     if (data.error) {
-                        alert("Erro da OpenAI: " + data.error.message);
+                        alert("Erro da API Google: " + data.error.message);
                         setIsSearching(false);
                         return;
                     }
 
-                    const resultText = data.choices[0].message.content;
-                    const parsedResult = JSON.parse(resultText);
-                    setFoundEdicts(parsedResult.editais || []);
+                    // A resposta vem como JSON formatado em string
+                    const resultText = data.candidates[0].content.parts[0].text;
+                    setFoundEdicts(JSON.parse(resultText));
                     
                 } catch (error) {
-                    console.error("Erro completo:", error);
-                    alert("Ocorreu uma falha na ligação com a OpenAI. Verifique o console.");
+                    console.error("Erro na conversão dos dados:", error);
+                    alert("A IA gerou os dados, mas houve um erro ao processá-los. Verifique o console.");
                 } finally {
                     setIsSearching(false);
                 }
             };
 
             // ==============================================================================
-            // MOTOR 2: O GERADOR DE BUSINESS CASE (Padrão PMI com ChatGPT)
+            // MOTOR 2: O GERADOR DE BUSINESS CASE (Padrão PMI & P5)
             // ==============================================================================
             const generateBusinessCase = async (edict) => {
                 setIsGeneratingDoc(true);
@@ -116,73 +106,61 @@
                 setActiveTab('docs');
                 setBusinessCaseDoc(null);
 
-                const url = "https://api.openai.com/v1/chat/completions";
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-                const systemPrompt = `
-                    Você é um Gerente de Projetos Especialista (PMP) certificado pelo PMI.
-                    Sua tarefa é criar um rascunho de 'Business Case' alinhado rigorosamente ao PMBOK e ao Padrão P5 de Sustentabilidade, visando aprovação de recursos.
-                `;
-
-                const userPrompt = `
+                const prompt = `
+                    Você é um Gestor de Projetos certificado (PMP).
+                    Crie um rascunho de 'Business Case' (Caso de Negócios) alinhado rigorosamente ao PMBOK e ao Padrão P5 de Sustentabilidade, visando a aprovação neste edital específico:
+                    
                     DADOS DO EDITAL SUGERIDO:
                     Agência: ${edict.agency}
                     Título: ${edict.title}
                     Teto: ${edict.maxValue}
 
-                    PROJETO DA EMPRESA:
+                    PROJETO DO UTILIZADOR:
                     ${projectText}
 
-                    ESTRUTURA OBRIGATÓRIA (Use formatação Markdown):
-                    # Business Case: [Crie um Título Inovador]
-                    **Alvo:** Edital ${edict.title} - ${edict.agency}
+                    ESTRUTURA OBRIGATÓRIA (Utilize formatação Markdown rigorosa):
+                    # Business Case: [Crie um Título Comercial Atrativo]
+                    **Alvo Estratégico:** Edital ${edict.title} - ${edict.agency}
 
                     ## 1. Necessidade de Negócios (Business Need)
                     [Justifique a razão fundamental do projeto baseado na tese do edital]
 
                     ## 2. Análise da Situação e Alternativas
-                    [Qual a dor resolvida? Por que esta solução tecnológica é a melhor?]
+                    [Qual a dor resolvida? Por que esta é a melhor opção no mercado?]
 
                     ## 3. Benefícios Esperados (Incluindo Sustentabilidade P5)
-                    [Tangíveis e Intangíveis (Impacto social, governança, ambiental)]
+                    [Benefícios Tangíveis e Intangíveis (Impacto social, governança, ambiental)]
 
                     ## 4. Principais Riscos e Restrições
-                    [Mapeie riscos de alto nível de implantação técnica e de negócio]
+                    [Mapeie riscos de alto nível de implantação técnica]
 
                     ## 5. Estimativa de Orçamento e Cronograma
-                    [Como o recurso será aplicado em fases do ciclo de vida]
+                    [Como o recurso financeiro será aplicado em fases do ciclo de vida]
 
                     ## 6. Critérios de Sucesso
-                    [Métricas que provarão o encerramento bem-sucedido]
+                    [Métricas reais que provarão o encerramento bem-sucedido do projeto]
                 `;
 
                 try {
                     const response = await fetch(url, {
                         method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${OPENAI_API_KEY}`
-                        },
-                        body: JSON.stringify({ 
-                            model: "gpt-4o-mini", // Aqui também usamos o gpt-4o-mini
-                            messages: [
-                                { role: "system", content: systemPrompt },
-                                { role: "user", content: userPrompt }
-                            ],
-                            temperature: 0.7
-                        })
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                     });
                     
                     const data = await response.json();
                     
                     if (data.error) {
-                        alert("Erro da OpenAI: " + data.error.message);
+                        alert("Erro da API Google: " + data.error.message);
                         setIsGeneratingDoc(false);
                         return;
                     }
 
-                    setBusinessCaseDoc(data.choices[0].message.content);
+                    setBusinessCaseDoc(data.candidates[0].content.parts[0].text);
                 } catch (error) {
-                    setBusinessCaseDoc("Ocorreu um erro ao gerar o documento.");
+                    setBusinessCaseDoc("Ocorreu um erro ao gerar a documentação técnica.");
                 } finally {
                     setIsGeneratingDoc(false);
                 }
@@ -191,57 +169,61 @@
             const copyToClipboard = () => {
                 if(businessCaseDoc) {
                     navigator.clipboard.writeText(businessCaseDoc);
-                    alert("Copiado com sucesso!");
+                    alert("Documento copiado com sucesso! Já pode colar no Word ou Google Docs.");
                 }
             };
 
             return (
                 <div className="min-h-screen flex flex-col md:flex-row">
+                    {/* Menu Lateral */}
                     <aside className="w-full md:w-64 bg-slate-900 text-white flex flex-col">
                         <div className="p-6">
-                            <h1 className="text-2xl font-bold flex items-center text-emerald-400">
-                                <i className="fas fa-brain mr-2"></i> Fomento.AI
+                            <h1 className="text-2xl font-bold flex items-center text-blue-400">
+                                <i className="fas fa-satellite-dish mr-2"></i> Fomento.AI
                             </h1>
-                            <p className="text-xs text-slate-400 mt-1">Powered by ChatGPT</p>
+                            <p className="text-xs text-slate-400 mt-1">Conhecimento Gemini Integrado</p>
                         </div>
                         <nav className="flex-1 px-4 space-y-2 mt-4">
-                            <button onClick={() => setActiveTab('busca')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${activeTab === 'busca' ? 'bg-emerald-600' : 'hover:bg-slate-800'}`}>
-                                <i className="fas fa-search w-6"></i> IA de Sugestão
+                            <button onClick={() => setActiveTab('busca')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${activeTab === 'busca' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                                <i className="fas fa-search w-6"></i> Análise de Editais
                             </button>
-                            <button onClick={() => setActiveTab('docs')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${activeTab === 'docs' ? 'bg-emerald-600' : 'hover:bg-slate-800'}`}>
-                                <i className="fas fa-file-contract w-6"></i> Projetos PMI
+                            <button onClick={() => setActiveTab('docs')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${activeTab === 'docs' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                                <i className="fas fa-file-contract w-6"></i> Rascunhos PMI
                             </button>
                         </nav>
                     </aside>
 
+                    {/* Conteúdo Principal */}
                     <main className="flex-1 p-6 md:p-10 overflow-y-auto">
                         
+                        {/* ABA: BUSCA */}
                         {activeTab === 'busca' && (
                             <div className="max-w-4xl mx-auto">
                                 <div className="mb-8">
-                                    <h2 className="text-3xl font-bold text-slate-800">Motor de Análise via ChatGPT</h2>
-                                    <p className="text-slate-500 mt-1">Descreva seu projeto. A Inteligência Artificial da OpenAI irá sugerir as melhores linhas de fomento e editais brasileiros para o seu perfil.</p>
+                                    <h2 className="text-3xl font-bold text-slate-800">Motor de Inteligência Gemini</h2>
+                                    <p className="text-slate-500 mt-1">Descreva a sua iniciativa tecnológica. O sistema usará a base de conhecimentos do Gemini para lhe sugerir as melhores linhas de subvenção no Brasil.</p>
                                 </div>
 
                                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Qual é a sua ideia, pesquisa ou negócio?</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Descreva a sua empresa, ideia ou pesquisa:</label>
                                     <textarea 
                                         rows="5"
                                         value={projectText}
                                         onChange={(e) => setProjectText(e.target.value)}
-                                        placeholder="Ex: Estamos desenvolvendo um sistema SaaS B2B na área de saúde..."
-                                        className="w-full border border-slate-300 rounded-lg p-4 focus:ring-2 focus:ring-emerald-500 focus:outline-none mb-4"
+                                        placeholder="Ex: Estamos a desenvolver um software SaaS B2B com Inteligência Artificial para o setor agrícola..."
+                                        className="w-full border border-slate-300 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:outline-none mb-4"
                                     ></textarea>
                                     <button 
                                         onClick={searchEdictsWithAI}
                                         disabled={isSearching}
-                                        className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-lg transition-all disabled:opacity-70 flex items-center justify-center"
+                                        className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-all disabled:opacity-70 flex items-center justify-center"
                                     >
-                                        {isSearching ? <i className="fas fa-circle-notch fa-spin mr-2"></i> : <i className="fas fa-robot mr-2"></i>}
-                                        {isSearching ? 'A OpenAI está analisando...' : 'Sugerir Editais Compatíveis'}
+                                        {isSearching ? <i className="fas fa-circle-notch fa-spin mr-2"></i> : <i className="fas fa-radar mr-2"></i>}
+                                        {isSearching ? 'O Gemini está a analisar...' : 'Encontrar Editais Compatíveis'}
                                     </button>
                                 </div>
 
+                                {/* Resultados */}
                                 {foundEdicts.length > 0 && (
                                     <div className="space-y-4">
                                         <h3 className="text-xl font-bold text-slate-800 border-b pb-2">Oportunidades Sugeridas</h3>
@@ -249,10 +231,10 @@
                                             <div key={idx} className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex flex-col md:flex-row gap-6">
                                                 <div className="md:w-3/4">
                                                     <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full uppercase mr-2">{edict.agency}</span>
-                                                    <span className="text-emerald-600 text-xs font-bold px-3 py-1 bg-emerald-50 rounded-full">{edict.status}</span>
+                                                    <span className="text-green-600 text-xs font-bold px-3 py-1 bg-green-50 rounded-full">{edict.status}</span>
                                                     <h4 className="text-lg font-bold text-slate-900 mt-3 mb-2">{edict.title}</h4>
                                                     <p className="text-slate-600 text-sm">{edict.description}</p>
-                                                    <p className="text-sm font-bold text-slate-800 mt-2"><i className="fas fa-coins text-emerald-500 mr-1"></i> Estimativa: {edict.maxValue}</p>
+                                                    <p className="text-sm font-bold text-slate-800 mt-2"><i className="fas fa-coins text-amber-500 mr-1"></i> Orçamento Máximo: {edict.maxValue}</p>
                                                 </div>
                                                 <div className="md:w-1/4 flex items-center">
                                                     <button 
@@ -269,18 +251,19 @@
                             </div>
                         )}
 
+                        {/* ABA: DOCUMENTOS (PMI) */}
                         {activeTab === 'docs' && (
                             <div className="max-w-4xl mx-auto h-full flex flex-col">
                                 <div className="mb-6">
-                                    <h2 className="text-3xl font-bold text-slate-800"><i className="fas fa-file-contract text-emerald-600 mr-2"></i> Documentação PMI</h2>
-                                    <p className="text-slate-500">Business Case estruturado pelo modelo GPT-4o-mini focado nas normas do PMI e P5.</p>
+                                    <h2 className="text-3xl font-bold text-slate-800"><i className="fas fa-file-contract text-blue-600 mr-2"></i> Documentação do Projeto</h2>
+                                    <p className="text-slate-500">Estruturação estratégica (Business Case) baseada nas boas práticas do Guia PMBOK da sua documentação.</p>
                                 </div>
 
                                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
                                     {isGeneratingDoc ? (
                                         <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
-                                            <i className="fas fa-circle-notch fa-spin text-5xl text-emerald-600 mb-6"></i>
-                                            <h3 className="text-xl font-bold text-slate-800">O ChatGPT está escrevendo o projeto...</h3>
+                                            <i className="fas fa-circle-notch fa-spin text-5xl text-blue-600 mb-6"></i>
+                                            <h3 className="text-xl font-bold text-slate-800">A elaborar o Caso de Negócios...</h3>
                                         </div>
                                     ) : businessCaseDoc ? (
                                         <>
@@ -289,7 +272,7 @@
                                                     <span className="text-xs font-bold text-slate-500 uppercase block">Edital Selecionado</span>
                                                     <span className="font-bold text-slate-800">{selectedEdict?.title}</span>
                                                 </div>
-                                                <button onClick={copyToClipboard} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold flex items-center transition">
+                                                <button onClick={copyToClipboard} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center">
                                                     <i className="far fa-copy mr-2"></i> Copiar Texto
                                                 </button>
                                             </div>
@@ -297,7 +280,7 @@
                                                 <div 
                                                     className="prose max-w-none text-slate-800 font-sans"
                                                     dangerouslySetInnerHTML={{ 
-                                                        __html: businessCaseDoc.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/## (.*?)<br\/>/g, '<h2 class="text-xl font-bold mt-8 mb-4 text-slate-900 border-b pb-2">$1</h2>').replace(/# (.*?)<br\/>/g, '<h1 class="text-2xl font-black mb-6 text-emerald-900">$1</h1>')
+                                                        __html: businessCaseDoc.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/## (.*?)<br\/>/g, '<h2 class="text-xl font-bold mt-8 mb-4 text-slate-900 border-b pb-2">$1</h2>').replace(/# (.*?)<br\/>/g, '<h1 class="text-2xl font-black mb-6 text-blue-900">$1</h1>')
                                                     }} 
                                                 />
                                             </div>
@@ -306,7 +289,7 @@
                                         <div className="flex-1 flex flex-col items-center justify-center p-10 text-slate-400">
                                             <i className="fas fa-file-signature text-6xl mb-4 opacity-50"></i>
                                             <h3 className="text-xl font-bold text-slate-700">Nenhum documento gerado.</h3>
-                                            <p className="mt-2 text-center">Faça uma busca na aba anterior e escolha uma oportunidade.</p>
+                                            <p className="mt-2 text-center">Efetue uma pesquisa na aba "Análise de Editais" e escolha uma oportunidade.</p>
                                         </div>
                                     )}
                                 </div>
