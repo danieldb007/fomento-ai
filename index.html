@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fomento.AI | Radar de Editais e Projetos PMI (DeepSeek v3.1)</title>
+    
+    <!-- TAGS ANTI-CACHE PARA FORÇAR A ATUALIZAÇÃO DO GITHUB PAGES -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <title>Fomento.AI | Radar de Editais e Projetos PMI (DeepSeek v3.2)</title>
     
     <!-- Tailwind CSS para Estilização Premium -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -124,7 +130,7 @@
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
                         },
-                        // O response_format foi removido permanentemente para evitar o erro do servidor
+                        // AQUI ESTÁ A GARANTIA: O response_format não existe neste código.
                         body: JSON.stringify({ 
                             model: "deepseek-chat",
                             messages: [
@@ -143,7 +149,7 @@
                         return;
                     }
 
-                    // Extração e limpeza do JSON (Garante que se vier formato Markdown, o código não quebra)
+                    // Extração e limpeza do JSON para evitar erros caso a IA envie Markdown
                     let resultText = data.choices[0].message.content;
                     resultText = resultText.replace(/```json/gi, '').replace(/```/g, '').trim();
                     
@@ -296,7 +302,7 @@
                         <div className="p-4 hidden md:block">
                             <div className="bg-slate-800 rounded-xl p-4 text-xs text-slate-400 border border-slate-700">
                                 <p><i className="fas fa-microchip text-blue-400 mr-1"></i> Motor de IA</p>
-                                <p className="mt-1 font-semibold text-slate-300">DeepSeek (Versão 3.1)</p>
+                                <p className="mt-1 font-semibold text-slate-300">DeepSeek (Versão 3.2)</p>
                             </div>
                         </div>
                     </aside>
