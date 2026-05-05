@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fomento.AI - Busca Ativa de Editais</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // ==============================================================================
+        // ⚙️ CONFIGURAÇÃO (PREENCHA AQUI SUA CHAVE DO GOOGLE AI STUDIO)
+        // ==============================================================================
+        const GEMINI_API_KEY = "AIzaSyDNf1z_K4IhLaEzXWY8MiTpX6msLJvc1Nw";
+
+        const { useState } = React;
+
+        function App() {
+            const [activeTab, setActiveTab] = useState('busca');
+            const [projectText, setProjectText] = useState('');
+            const [isSearching, setIsSearching] = useState(false);
+            const [foundEdicts, setFoundEdicts] = useState([]);
+            
+            const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
+            const [businessCaseDoc, setBusinessCaseDoc] = useState(null);
+            const [selectedEdict, setSelectedEdict] = useState(null);
+
+            // ==============================================================================
+            // MOTOR 1: A BUSCA ATIVA NA WEB (Caçador de Editais)
+            // ==============================================================================
+            const searchEdictsWithAI = async () => {
+                if (!projectText.trim()) {
+                    alert("Descreva seu projeto para que a IA saiba o que buscar.");
+                    return;
+                }
+                if (GEMINI_API_KEY === "AIzaSyDNf1z_K4IhLaEzXWY8MiTpX6msLJvc1Nw") {
+                    alert("Por favor, insira sua chave do Gemini no código-fonte.");
+                    return;
+                }
+
+                setIsSearching(true);
+                setFoundEdicts([]);
+
+                // Usando a API v1beta que suporta Search Grounding nativo (googleSearchRetrieval)
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+
+                const prompt = `
+                    Atue como um Especialista em Captação de Recursos no Brasil.
+                    O usuário tem o seguinte projeto/empresa:
+                    "${projectText}"
+
+                    Sua tarefa é usar seu conhecimento atualizado e pesquisar por EDITAIS DE FOMENTO, SUBVENÇÃO OU FINANCIAMENTO ABERTOS RECENTEMENTE no Brasil (ex: FINEP, CNPq, FAPESP, BNDES, Sebrae, FAPs estaduais) que tenham aderência a este projeto.
+
+                    Retorne EXATAMENTE UM JSON válido (sem formatação markdown em volta) com a seguinte estrutura:
+                    [
+                        {
+                            "title": "Nome do Edital",
+                            "agency": "Sigla da Agência (ex: FINEP)",
+                            "description": "Resumo de 2 linhas do edital e por que se aplica ao projeto",
+                            "maxValue": "Valor estimado ou 'Sob consulta'",
+                            "status": "Aberto / Fluxo Contínuo / Previsão"
+                        }
+                    ]
+                    Liste no máximo 4 opções mais relevantes.
+                `;
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            contents: [{ parts: [{ text: prompt }] }],
+                            // Ativa a busca na web nativa do Google para fundamentar a resposta
+                            tools: [{ googleSearchRetrieval: { dynamicRetrievalConfig: { mode: "MODE_DYNAMIC", dynamicThreshold: 0.3 } } }],
+                            generationConfig: { responseMimeType: "application/json" }
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    const resultText = data.candidates[0].content.parts[0].text;
+                    setFoundEdicts(JSON.parse(resultText));
+                } catch (error) {
+                    console.error(error);
+                    alert("Erro ao buscar editais. Verifique o console.");
+                } finally {
+                    setIsSearching(false);
+                }
+            };
+
+            // ==============================================================================
+            // MOTOR 2: O GERADOR DE BUSINESS CASE (Padrão PMI)
+            // ==============================================================================
+            const generateBusinessCase = async (edict) => {
+                setIsGeneratingDoc(true);
+                setSelectedEdict(edict);
+                setActiveTab('docs');
+                setBusinessCaseDoc(null);
+
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+
+                const prompt = `
+                    Você é um Gerente de Projetos certificado (PMP).
+                    Crie um rascunho de 'Business Case' (Caso de Negócios) alinhado rigorosamente ao PMBOK e ao Padrão P5 de Sustentabilidade, visando aprovação neste edital específico:
+                    
+                    DADOS DO EDITAL ENCONTRADO:
+                    Agência: ${edict.agency}
+                    Título: ${edict.title}
+                    Teto: ${edict.maxValue}
+
+                    PROJETO DO USUÁRIO:
+                    ${projectText}
+
+                    ESTRUTURA OBRIGATÓRIA (Use formatação Markdown):
+                    # Business Case: [Crie um Título para o Projeto]
+                    **Alvo:** Edital ${edict.title} - ${edict.agency}
+
+                    ## 1. Necessidade de Negócios (Business Need)
+                    [Justifique a razão fundamental do projeto baseado na tese do edital]
+
+                    ## 2. Análise da Situação e Alternativas
+                    [Qual a dor resolvida? Por que esta é a melhor opção?]
+
+                    ## 3. Benefícios Esperados (Incluindo Sustentabilidade P5)
+                    [Tangíveis e Intangíveis (Impacto social, governança, ambiental)]
+
+                    ## 4. Principais Riscos e Restrições
+                    [Mapeie riscos de alto nível de implantação técnica]
+
+                    ## 5. Estimativa de Orçamento e Cronograma
+                    [Como o recurso será aplicado em fases do ciclo de vida]
+
+                    ## 6. Critérios de Sucesso
+                    [Métricas que provarão o encerramento bem-sucedido]
+                `;
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    });
+                    const data = await response.json();
+                    setBusinessCaseDoc(data.candidates[0].content.parts[0].text);
+                } catch (error) {
+                    setBusinessCaseDoc("Ocorreu um erro ao gerar o documento.");
+                } finally {
+                    setIsGeneratingDoc(false);
+                }
+            };
+
+            const copyToClipboard = () => {
+                if(businessCaseDoc) {
+                    navigator.clipboard.writeText(businessCaseDoc);
+                    alert("Copiado com sucesso!");
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col md:flex-row">
+                    {/* Sidebar */}
+                    <aside className="w-full md:w-64 bg-slate-900 text-white flex flex-col">
+                        <div className="p-6">
+                            <h1 className="text-2xl font-bold flex items-center text-blue-400">
+                                <i className="fas fa-satellite-dish mr-2"></i> Fomento.AI
+                            </h1>
+                            <p className="text-xs text-slate-400 mt-1">Busca Ativa na Web</p>
+                        </div>
+                        <nav className="flex-1 px-4 space-y-2 mt-4">
+                            <button onClick={() => setActiveTab('busca')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${activeTab === 'busca' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                                <i className="fas fa-search w-6"></i> Caçador de Editais
+                            </button>
+                            <button onClick={() => setActiveTab('docs')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${activeTab === 'docs' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                                <i className="fas fa-file-contract w-6"></i> Projetos PMI
+                            </button>
+                        </nav>
+                    </aside>
+
+                    {/* Main Content */}
+                    <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+                        
+                        {/* ABA: BUSCA ATIVA */}
+                        {activeTab === 'busca' && (
+                            <div className="max-w-4xl mx-auto">
+                                <div className="mb-8">
+                                    <h2 className="text-3xl font-bold text-slate-800">Motor de Busca por Texto</h2>
+                                    <p className="text-slate-500 mt-1">Descreva seu projeto. A IA vai vasculhar a web atrás dos melhores editais abertos no Brasil para o seu perfil.</p>
+                                </div>
+
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Qual é a sua ideia, pesquisa ou negócio?</label>
+                                    <textarea 
+                                        rows="5"
+                                        value={projectText}
+                                        onChange={(e) => setProjectText(e.target.value)}
+                                        placeholder="Cole aqui o descritivo do que você quer financiar, tecnologias envolvidas e o impacto gerado..."
+                                        className="w-full border border-slate-300 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:outline-none mb-4"
+                                    ></textarea>
+                                    <button 
+                                        onClick={searchEdictsWithAI}
+                                        disabled={isSearching}
+                                        className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-all disabled:opacity-70 flex items-center justify-center"
+                                    >
+                                        {isSearching ? <i className="fas fa-circle-notch fa-spin mr-2"></i> : <i className="fas fa-radar mr-2"></i>}
+                                        {isSearching ? 'Buscando Editais na Web...' : 'Caçar Editais Compatíveis'}
+                                    </button>
+                                </div>
+
+                                {/* Resultados da Busca */}
+                                {foundEdicts.length > 0 && (
+                                    <div className="space-y-4">
+                                        <h3 className="text-xl font-bold text-slate-800 border-b pb-2">Oportunidades Encontradas</h3>
+                                        {foundEdicts.map((edict, idx) => (
+                                            <div key={idx} className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex flex-col md:flex-row gap-6">
+                                                <div className="md:w-3/4">
+                                                    <span className="bg-slate-100 text-slate-600 text-xs font-bold px-3 py-1 rounded-full uppercase mr-2">{edict.agency}</span>
+                                                    <span className="text-green-600 text-xs font-bold px-3 py-1 bg-green-50 rounded-full">{edict.status}</span>
+                                                    <h4 className="text-lg font-bold text-slate-900 mt-3 mb-2">{edict.title}</h4>
+                                                    <p className="text-slate-600 text-sm">{edict.description}</p>
+                                                    <p className="text-sm font-bold text-slate-800 mt-2"><i className="fas fa-coins text-amber-500 mr-1"></i> Estimativa: {edict.maxValue}</p>
+                                                </div>
+                                                <div className="md:w-1/4 flex items-center">
+                                                    <button 
+                                                        onClick={() => generateBusinessCase(edict)}
+                                                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-lg text-sm transition"
+                                                    >
+                                                        Gerar Business Case
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ABA: GERADOR DE DOCS (PMI) */}
+                        {activeTab === 'docs' && (
+                            <div className="max-w-4xl mx-auto h-full flex flex-col">
+                                <div className="mb-6">
+                                    <h2 className="text-3xl font-bold text-slate-800"><i className="fas fa-file-contract text-blue-600 mr-2"></i> Documentação do Projeto</h2>
+                                    <p className="text-slate-500">Estruturação estratégica baseada nas boas práticas do Guia PMBOK.</p>
+                                </div>
+
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
+                                    {isGeneratingDoc ? (
+                                        <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
+                                            <i className="fas fa-circle-notch fa-spin text-5xl text-blue-600 mb-6"></i>
+                                            <h3 className="text-xl font-bold text-slate-800">Elaborando Business Case...</h3>
+                                        </div>
+                                    ) : businessCaseDoc ? (
+                                        <>
+                                            <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
+                                                <div>
+                                                    <span className="text-xs font-bold text-slate-500 uppercase block">Edital Selecionado</span>
+                                                    <span className="font-bold text-slate-800">{selectedEdict?.title}</span>
+                                                </div>
+                                                <button onClick={copyToClipboard} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center">
+                                                    <i className="far fa-copy mr-2"></i> Copiar Texto
+                                                </button>
+                                            </div>
+                                            <div className="p-8 overflow-y-auto">
+                                                <div 
+                                                    className="prose max-w-none text-slate-800 font-sans"
+                                                    dangerouslySetInnerHTML={{ 
+                                                        __html: businessCaseDoc.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/## (.*?)<br\/>/g, '<h2 class="text-xl font-bold mt-8 mb-4 text-slate-900 border-b pb-2">$1</h2>').replace(/# (.*?)<br\/>/g, '<h1 class="text-2xl font-black mb-6 text-blue-900">$1</h1>')
+                                                    }} 
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="flex-1 flex flex-col items-center justify-center p-10 text-slate-400">
+                                            <i className="fas fa-file-signature text-6xl mb-4 opacity-50"></i>
+                                            <h3 className="text-xl font-bold text-slate-700">Nenhum documento gerado.</h3>
+                                            <p className="mt-2 text-center">Faça uma busca na web pela aba "Caçador de Editais" e escolha uma oportunidade.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
