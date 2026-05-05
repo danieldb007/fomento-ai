@@ -482,7 +482,7 @@ function checkApiKey(val) {
 function updateSearchBtn() {
   const btn = document.getElementById('searchBtn');
   const text = document.getElementById('projectText').value.trim();
-  btn.disabled = !(state.apiKey.startsWith('AIzaSy') && text.length > 20);
+  btn.disabled = !(state.apiKey.startsWith('AIzaSy') && text.length > 2);
 }
 
 function updateCharCount() {
@@ -521,34 +521,45 @@ function showToast(msg) {
   setTimeout(() => t.className = 'copy-toast', 2500);
 }
 
-// ─── GEMINI API ───────────────────────────────────────────────
-async function callGemini(prompt, useSearch = false) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${state.apiKey}`;
+// ─── GEMINI API com fallback ─────────────────────────────────
+const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-latest'];
 
-  const body = {
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0.4, maxOutputTokens: 4096 }
-  };
-
-  if (useSearch) {
-    body.tools = [{ google_search: {} }];
+async function callGemini(prompt) {
+  let lastError = null;
+  for (const model of MODELS) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${state.apiKey}`;
+    const body = {
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: 4096 }
+    };
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = err?.error?.message || `HTTP ${res.status}`;
+        if (msg.includes('API_KEY') || msg.includes('PERMISSION') || res.status === 401 || res.status === 403) {
+          throw new Error(msg);
+        }
+        lastError = new Error(msg);
+        continue;
+      }
+      const data = await res.json();
+      const parts = data?.candidates?.[0]?.content?.parts || [];
+      const text = parts.filter(p => p.text).map(p => p.text).join('\n').trim();
+      if (!text) { lastError = new Error('Resposta vazia.'); continue; }
+      return text;
+    } catch (err) {
+      if (err.message.includes('API_KEY') || err.message.includes('PERMISSION') || err.message.includes('not valid')) {
+        throw err;
+      }
+      lastError = err;
+    }
   }
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const msg = err?.error?.message || `HTTP ${res.status}`;
-    throw new Error(msg);
-  }
-
-  const data = await res.json();
-  const parts = data?.candidates?.[0]?.content?.parts || [];
-  return parts.filter(p => p.text).map(p => p.text).join('\n').trim();
+  throw lastError || new Error('Falha em todos os modelos.');
 }
 
 // ─── BUSCAR EDITAIS ───────────────────────────────────────────
@@ -557,69 +568,65 @@ async function buscarEditais() {
   if (!txt || !state.apiKey) return;
   state.projectText = txt;
 
-  setLoading(true, 'Enviando para o Gemini com busca ativa...');
+  setLoading(true, 'Analisando o projeto...');
 
-  const loaderMessages = [
-    'Consultando FINEP, CNPq, FAPESP...',
-    'Analisando compatibilidade do projeto...',
-    'Verificando editais abertos...',
-    'Calculando aderência aos critérios...'
+  const steps = [
+    'Consultando base de editais FINEP, CNPq...',
+    'Verificando FAPs estaduais e BNDES...',
+    'Cruzando com Sebrae, EMBRAPII...',
+    'Calculando compatibilidade...',
+    'Preparando recomendações...'
   ];
   let idx = 0;
   const loaderInterval = setInterval(() => {
-    document.getElementById('loaderStep').textContent = loaderMessages[idx++ % loaderMessages.length];
-  }, 2200);
+    document.getElementById('loaderStep').textContent = steps[idx++ % steps.length];
+  }, 1800);
 
-  const prompt = `Você é um especialista em fomento à inovação no Brasil. Usando sua busca na web, encontre editais de fomento ABERTOS ou com inscrições previstas para os próximos meses que sejam compatíveis com o projeto descrito abaixo.
+  const prompt = `Você é especialista sênior em fomento à inovação e financiamento público no Brasil.
 
 PROJETO DO USUÁRIO:
+"""
 ${txt}
+"""
 
-INSTRUÇÕES:
-1. Pesquise editais atuais de: FINEP, CNPq, FAPESP, FAPs estaduais, BNDES, Sebrae, EMBRAPII, MCTI e ministérios setoriais
-2. Retorne de 4 a 6 editais mais compatíveis
-3. Priorize editais com prazo de inscrição em aberto ou prestes a abrir
+Identifique os 5 programas/editais de fomento brasileiros MAIS ADEQUADOS para este projeto, baseando-se nos seus programas de: FINEP (Inovacred, PIPE, Startup, Inova Agro, etc), CNPq, FAPs estaduais (FAPESP, FAPERJ, FAPEMIG, FAPESC, etc - use a do estado se mencionado), BNDES, Sebrae (Sebraetec, ALI, Inova Rural), EMBRAPII, SENAI, ABDI, MCTI e ministérios setoriais.
 
-Responda APENAS com um JSON válido, sem nenhum texto antes ou depois, sem markdown, sem \`\`\`. O formato deve ser EXATAMENTE:
+RESPONDA SOMENTE com JSON válido. NENHUM texto antes ou depois. NENHUM markdown. NENHUMA backtick. O PRIMEIRO caractere deve ser [
+
 [
   {
-    "agencia": "Nome da agência (ex: FINEP)",
-    "titulo": "Nome do edital",
-    "descricao": "Resumo em 2 frases do que financia e para quem",
-    "valorMax": "Valor máximo disponível (ex: R$ 500 mil, ou Não informado)",
-    "prazo": "Prazo de inscrição (ex: 30/06/2025, ou Em breve, ou Consulte o site)",
-    "tags": ["tag1", "tag2", "tag3"],
-    "link": "URL oficial se disponível ou string vazia",
-    "compatibilidade": "Alta, Média ou Baixa",
-    "motivo": "Por que este edital é compatível com o projeto em 1 frase curta"
+    "agencia": "FINEP",
+    "titulo": "Nome do programa",
+    "descricao": "O que financia e quem é elegível, em 2 frases.",
+    "valorMax": "Valor típico ex: R$ 500 mil",
+    "prazo": "Periodicidade ou prazo, ex: Fluxo contínuo",
+    "tags": ["inovação", "startup", "reembolsável"],
+    "link": "URL oficial ou string vazia",
+    "compatibilidade": "Alta",
+    "motivo": "Por que se encaixa neste projeto."
   }
 ]`;
 
   try {
-    const raw = await callGemini(prompt, true);
+    const raw = await callGemini(prompt);
     clearInterval(loaderInterval);
 
-    // Clean JSON - remove markdown fences if present
-    let cleaned = raw
-      .replace(/```json\s*/gi, '')
-      .replace(/```\s*/g, '')
-      .trim();
-
-    // Extract JSON array
+    let cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
     const start = cleaned.indexOf('[');
     const end = cleaned.lastIndexOf(']');
-    if (start === -1 || end === -1) throw new Error('Formato inválido retornado pela IA. Tente novamente.');
+    if (start === -1 || end === -1) throw new Error('Formato inválido. Tente novamente com mais detalhes.');
     cleaned = cleaned.slice(start, end + 1);
 
     let editais;
     try {
       editais = JSON.parse(cleaned);
     } catch {
-      throw new Error('Não foi possível interpretar a resposta da IA. Tente descrever o projeto com mais detalhes.');
+      const sanitized = cleaned.replace(/[\x00-\x1F\x7F]/g, ' ').replace(/,\s*]/g, ']').replace(/,\s*}/g, '}');
+      editais = JSON.parse(sanitized);
     }
 
     if (!Array.isArray(editais) || editais.length === 0) {
-      throw new Error('Nenhum edital compatível encontrado. Tente reformular a descrição do projeto.');
+      throw new Error('Nenhum edital encontrado. Adicione mais detalhes: área, tecnologia, estado, porte.');
     }
 
     state.editais = editais;
@@ -630,12 +637,14 @@ Responda APENAS com um JSON válido, sem nenhum texto antes ou depois, sem markd
   } catch (err) {
     clearInterval(loaderInterval);
     let msg = err.message || 'Erro desconhecido.';
-    if (msg.includes('API_KEY_INVALID') || msg.includes('API key')) {
-      msg = 'Chave de API inválida. Verifique se colou corretamente (começa com AIzaSy...).';
-    } else if (msg.includes('PERMISSION_DENIED')) {
-      msg = 'Permissão negada. Ative a Generative Language API no Google AI Studio e certifique que a chave tem acesso.';
-    } else if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
-      msg = 'Cota da API atingida. Aguarde alguns minutos ou verifique seus limites no Google AI Studio.';
+    if (msg.includes('API_KEY_INVALID') || msg.includes('not valid') || msg.includes('API key')) {
+      msg = '🔑 Chave inválida. Copie diretamente do Google AI Studio (aistudio.google.com → Get API Key).';
+    } else if (msg.includes('PERMISSION_DENIED') || msg.includes('403')) {
+      msg = '🚫 Acesso negado. Certifique que a chave está ativa no Google AI Studio.';
+    } else if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429')) {
+      msg = '⏳ Limite atingido. Aguarde 1 minuto e tente novamente.';
+    } else if (msg.includes('Failed to fetch') || msg.includes('network')) {
+      msg = '📡 Erro de conexão. Verifique sua internet.';
     }
     showError(msg);
   }
@@ -764,7 +773,7 @@ Crie o Business Case com as seguintes seções, usando os cabeçalhos exatamente
 Seja específico, profissional e use dados concretos onde possível. O documento deve demonstrar claramente por que este projeto merece o fomento do edital ${e.agencia}.`;
 
   try {
-    const texto = await callGemini(prompt, false);
+    const texto = await callGemini(prompt);
     state.bcText = texto;
 
     // Render with basic markdown
