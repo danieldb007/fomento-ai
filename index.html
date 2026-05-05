@@ -9,7 +9,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>Fomento.AI | Radar de Editais e Projetos PMI (DeepSeek v4.0)</title>
+    <title>Fomento.AI | Radar de Editais e Projetos PMI (DeepSeek v5.0)</title>
     
     <!-- Tailwind CSS para Estilização Premium -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -83,7 +83,7 @@
             const [apiErrorMsg, setApiErrorMsg] = useState("");
 
             // ==============================================================================
-            // MOTOR 1: RADAR DE BUSCAS (Integração DeepSeek) - V4.0
+            // MOTOR 1: RADAR DE BUSCAS (Integração DeepSeek) - V5.0
             // ==============================================================================
             const analyzeAndGenerateSearches = async () => {
                 setApiErrorMsg(""); // Limpa erros antigos
@@ -96,8 +96,8 @@
                 setIsSearching(true);
                 setAiAnalysis(null);
 
-                // Atualizado para o endpoint oficial e estável v1
-                const url = "https://api.deepseek.com/v1/chat/completions";
+                // URL base estável do DeepSeek
+                const url = "https://api.deepseek.com/chat/completions";
 
                 const systemPrompt = `
                     Atue como um Especialista Sénior em Captação de Recursos e Fomento à Inovação no Brasil.
@@ -133,7 +133,6 @@
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
                         },
-                        // Totalmente limpo de comandos de formatação que geram erros
                         body: JSON.stringify({ 
                             model: "deepseek-chat",
                             messages: [
@@ -144,12 +143,26 @@
                         })
                     });
                     
-                    const data = await response.json();
+                    // Tratamento rigoroso de resposta com identificação clara do problema
+                    const data = await response.json().catch(() => null);
                     
-                    // Tratamento rigoroso de erros do DeepSeek (Ex: Falta de Saldo, Rate Limit, etc.)
-                    if (!response.ok || data.error) {
-                        const errMsg = data.error ? data.error.message : "Erro desconhecido HTTP " + response.status;
-                        setApiErrorMsg(`O DeepSeek rejeitou o pedido. Detalhe: ${errMsg}`);
+                    if (!response.ok || (data && data.error)) {
+                        let errMsg = data?.error?.message || `Erro HTTP ${response.status}`;
+                        
+                        // Traduz os erros comuns do DeepSeek para que possamos entender o problema
+                        if (response.status === 402 || errMsg.toLowerCase().includes("balance")) {
+                            errMsg = "Saldo Insuficiente (402). O DeepSeek já não oferece saldo gratuito a contas novas. Precisa de adicionar $1 à sua conta DeepSeek ou voltar a usar o código do Gemini (que é 100% gratuito).";
+                        } else if (response.status === 401) {
+                            errMsg = "Chave API Inválida (401). Verifique se copiou a chave do DeepSeek corretamente.";
+                        }
+                        
+                        setApiErrorMsg(errMsg);
+                        setIsSearching(false);
+                        return;
+                    }
+
+                    if (!data || !data.choices || !data.choices[0]) {
+                        setApiErrorMsg("Resposta em branco do servidor DeepSeek.");
                         setIsSearching(false);
                         return;
                     }
@@ -160,8 +173,8 @@
                     setAiAnalysis(JSON.parse(resultText));
                     
                 } catch (error) {
-                    console.error("Erro completo:", error);
-                    setApiErrorMsg("Falha crítica de comunicação com o servidor DeepSeek. Verifique a consola do navegador.");
+                    console.error("Erro de comunicação:", error);
+                    setApiErrorMsg("Falha crítica de comunicação com os servidores do DeepSeek. Isto geralmente ocorre devido a bloqueios de segurança do navegador (CORS) ou instabilidade da própria API do DeepSeek.");
                 } finally {
                     setIsSearching(false);
                 }
@@ -188,7 +201,7 @@
                 setActiveTab('docs');
                 setBusinessCaseDoc(null);
 
-                const url = "https://api.deepseek.com/v1/chat/completions";
+                const url = "https://api.deepseek.com/chat/completions";
 
                 const systemPrompt = `
                     Atue como um Diretor de Projetos Sénior com certificação PMP.
@@ -236,11 +249,14 @@
                         })
                     });
                     
-                    const data = await response.json();
+                    const data = await response.json().catch(() => null);
                     
-                    if (!response.ok || data.error) {
-                        const errMsg = data.error ? data.error.message : "Erro HTTP " + response.status;
-                        setApiErrorMsg(`O DeepSeek rejeitou o pedido (Docs). Detalhe: ${errMsg}`);
+                    if (!response.ok || (data && data.error)) {
+                        let errMsg = data?.error?.message || `Erro HTTP ${response.status}`;
+                        if (response.status === 402 || errMsg.toLowerCase().includes("balance")) {
+                            errMsg = "Saldo Insuficiente (402). Verifique o seu saldo no DeepSeek.";
+                        }
+                        setApiErrorMsg(`O DeepSeek rejeitou a criação do documento. Detalhe: ${errMsg}`);
                         setIsGeneratingDoc(false);
                         return;
                     }
@@ -301,8 +317,8 @@
                         <div className="p-4 hidden md:block">
                             <div className="bg-slate-800 rounded-xl p-4 text-xs text-slate-400 border border-slate-700">
                                 <p><i className="fas fa-microchip text-blue-400 mr-1"></i> Motor de IA</p>
-                                <p className="mt-1 font-semibold text-white">DeepSeek V4.0</p>
-                                <p className="text-[10px] mt-1 text-slate-500">Cache-Buster Ativo</p>
+                                <p className="mt-1 font-semibold text-white">DeepSeek V5.0</p>
+                                <p className="text-[10px] mt-1 text-slate-500">Engine com Resiliência</p>
                             </div>
                         </div>
                     </aside>
@@ -312,11 +328,11 @@
                         
                         {/* ALERTAS DE ERRO VISÍVEIS (DEBUG MODE) */}
                         {apiErrorMsg && (
-                            <div className="m-6 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-lg shadow-md flex items-start animate-[fadeIn_0.3s_ease-out]">
-                                <i className="fas fa-exclamation-triangle mt-1 mr-3 text-red-500"></i>
+                            <div className="m-6 p-4 bg-red-100 border-l-4 border-red-500 text-red-800 rounded-lg shadow-md flex items-start animate-[fadeIn_0.3s_ease-out]">
+                                <i className="fas fa-exclamation-triangle mt-1 mr-3 text-red-600 text-xl"></i>
                                 <div>
-                                    <h4 className="font-bold">Aviso do Sistema</h4>
-                                    <p className="text-sm">{apiErrorMsg}</p>
+                                    <h4 className="font-bold text-red-900">Aviso Crítico do Sistema</h4>
+                                    <p className="text-sm mt-1">{apiErrorMsg}</p>
                                 </div>
                             </div>
                         )}
