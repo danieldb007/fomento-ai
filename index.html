@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fomento.AI - Radar de Editais</title>
+    <title>Fomento.AI - Radar DeepSeek</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -16,9 +16,10 @@
 
     <script type="text/babel">
         // ==============================================================================
-        // ⚙️ A SUA CHAVE DO GEMINI 
+        // ⚙️ A SUA CHAVE DO DEEPSEEK
         // ==============================================================================
-        const GEMINI_API_KEY = "AIzaSyDNf1z_K4IhLaEzXWY8MiTpX6msLJvc1Nw";
+        // A chave do DeepSeek começa geralmente com "sk-"
+        const DEEPSEEK_API_KEY = "sk-182e4cc3f3d549228a1ab2210f2cb120";
 
         const { useState } = React;
 
@@ -33,92 +34,88 @@
             const [selectedEditalName, setSelectedEditalName] = useState("");
 
             // ==============================================================================
-            // MOTOR 1: GERADOR DE BUSCAS (DOU + AGÊNCIAS DE FOMENTO)
+            // MOTOR 1: GERADOR DE BUSCAS (DOU + AGÊNCIAS DE FOMENTO COM DEEPSEEK)
             // ==============================================================================
             const analyzeAndGenerateSearches = async () => {
                 if (!projectText.trim()) {
                     alert("Por favor, descreva o seu projeto.");
                     return;
                 }
+                if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === "sk-182e4cc3f3d549228a1ab2210f2cb120") {
+                    alert("Por favor, insira a sua chave do DeepSeek no código.");
+                    return;
+                }
 
                 setIsSearching(true);
                 setAiAnalysis(null);
 
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                // Endpoint oficial do DeepSeek (idêntico ao padrão OpenAI)
+                const url = "https://api.deepseek.com/chat/completions";
 
-                const prompt = `
-                    Atue como um Especialista em Captação de Recursos no Brasil.
-                    Analise este projeto: "${projectText}"
-
-                    Sua tarefa é criar "Queries" (termos de pesquisa avançada do Google) para encontrar editais abertos para este projeto específico nos seguintes locais:
-                    1. Diário Oficial da União (site:in.gov.br)
-                    2. FINEP (site:finep.gov.br)
-                    3. CNPq (site:cnpq.br)
-                    4. FAPESP (site:fapesp.br)
-                    5. Sebrae (site:sebrae.com.br)
-                    6. BNDES (site:bndes.gov.br) ou Embrapii (site:embrapii.org.br)
+                const systemPrompt = `
+                    Atue como um Especialista Lean/Ágil em Captação de Recursos no Brasil.
+                    Sua tarefa é criar "Queries" (termos de pesquisa avançada do Google) para encontrar editais abertos para o projeto do usuário.
+                    Foque nos locais: Diário Oficial da União (site:in.gov.br), FINEP, CNPq, FAPESP, Sebrae.
 
                     Retorne EXATAMENTE UM JSON válido com a seguinte estrutura:
                     {
-                        "diagnostico": "Um parágrafo resumindo as chances do projeto e quais agências mais se alinham a ele.",
-                        "sugestoes_historicas": [
-                            "Nome do Edital 1",
-                            "Nome do Edital 2"
-                        ],
+                        "diagnostico": "Um parágrafo resumindo as chances do projeto e quais agências mais se alinham.",
+                        "sugestoes_historicas": ["Nome do Edital 1", "Nome do Edital 2"],
                         "buscas_avancadas": [
                             {
-                                "agencia": "Diário Oficial da União",
-                                "titulo": "Busca no DOU",
-                                "query": "site:in.gov.br \\"chamada pública\\" OR \\"edital\\" AND \\"TERMOS DO PROJETO\\""
-                            },
-                            {
-                                "agencia": "FINEP",
-                                "titulo": "Busca na FINEP",
-                                "query": "site:finep.gov.br \\"chamada pública\\" OR \\"subvenção\\" AND \\"TERMOS DO PROJETO\\""
+                                "agencia": "Agência Alvo",
+                                "titulo": "Busca na Agência",
+                                "query": "site:dominio.gov.br \\"termo de busca\\" AND \\"palavra chave do projeto\\""
                             }
                         ]
                     }
-                    Substitua 'TERMOS DO PROJETO' pelas palavras-chave exatas da ideia do usuário. 
-                    Gere no mínimo 5 buscas focadas nas agências citadas acima.
+                    Gere no mínimo 5 buscas focadas nas agências.
                 `;
 
                 try {
                     const response = await fetch(url, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                        },
                         body: JSON.stringify({ 
-                            contents: [{ parts: [{ text: prompt }] }],
-                            generationConfig: { responseMimeType: "application/json" }
+                            model: "deepseek-chat", // Modelo super inteligente e barato
+                            response_format: { type: "json_object" }, // Garante que a resposta não quebre o sistema
+                            messages: [
+                                { role: "system", content: systemPrompt },
+                                { role: "user", content: `Projeto: ${projectText}` }
+                            ],
+                            temperature: 0.3
                         })
                     });
                     
                     const data = await response.json();
                     
                     if (data.error) {
-                        alert("Erro do Google: " + data.error.message);
+                        alert("Erro do DeepSeek: " + data.error.message);
                         setIsSearching(false);
                         return;
                     }
 
-                    const resultText = data.candidates[0].content.parts[0].text;
+                    const resultText = data.choices[0].message.content;
                     setAiAnalysis(JSON.parse(resultText));
                     
                 } catch (error) {
                     console.error("Erro completo:", error);
-                    alert("Houve uma falha ao comunicar com a IA. Tente novamente.");
+                    alert("Houve uma falha ao comunicar com a IA do DeepSeek. Tente novamente.");
                 } finally {
                     setIsSearching(false);
                 }
             };
 
-            // Função que gera o link real do Google (Busca no último mês)
             const createGoogleSearchLink = (query) => {
                 const encodedQuery = encodeURIComponent(query);
-                return `https://www.google.com/search?q=${encodedQuery}&tbs=qdr:m`; // Filtro: Último Mês
+                return `https://www.google.com/search?q=${encodedQuery}&tbs=qdr:m`; 
             };
 
             // ==============================================================================
-            // MOTOR 2: O GERADOR DE BUSINESS CASE (PMI)
+            // MOTOR 2: O GERADOR DE BUSINESS CASE (PMI VIA DEEPSEEK)
             // ==============================================================================
             const generateBusinessCase = async (nomeDoEdital) => {
                 setIsGeneratingDoc(true);
@@ -126,24 +123,20 @@
                 setActiveTab('docs');
                 setBusinessCaseDoc(null);
 
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                const url = "https://api.deepseek.com/chat/completions";
 
-                const prompt = `
-                    Você é um Gerente de Projetos certificado (PMP).
-                    O usuário encontrou um edital chamado: "${nomeDoEdital}".
-                    Projeto do usuário: "${projectText}"
-
-                    Crie um rascunho de 'Business Case' alinhado ao PMBOK e ao Padrão P5 de Sustentabilidade.
-
+                const systemPrompt = `
+                    Você é um Diretor de Desenvolvimento Profissional e Gestor de Projetos certificado (PMP).
+                    Crie um 'Business Case' ágil alinhado ao PMBOK e ao Padrão P5 de Sustentabilidade.
+                    
                     ESTRUTURA OBRIGATÓRIA (Use formatação Markdown rigorosa):
                     # Business Case: [Crie um Título Inovador]
-                    **Alvo:** ${nomeDoEdital}
-
+                    
                     ## 1. Necessidade de Negócios (Business Need)
                     [Justifique a razão fundamental do projeto]
 
                     ## 2. Análise da Situação e Alternativas
-                    [Qual a dor resolvida? Por que esta solução tecnológica é a melhor?]
+                    [Qual a dor resolvida e por que esta solução é a ideal?]
 
                     ## 3. Benefícios Esperados (Incluindo Sustentabilidade P5)
                     [Tangíveis e Intangíveis]
@@ -152,28 +145,43 @@
                     [Mapeie riscos de alto nível de implantação]
 
                     ## 5. Estimativa de Orçamento e Cronograma
-                    [Como o recurso será aplicado em fases do ciclo de vida]
+                    [Como o recurso será aplicado em fases de entregas ágeis]
 
                     ## 6. Critérios de Sucesso
-                    [Métricas que provarão o encerramento bem-sucedido]
+                    [Métricas claras para encerramento]
+                `;
+
+                const userPrompt = `
+                    Alvo: Edital "${nomeDoEdital}".
+                    Projeto do usuário: "${projectText}"
                 `;
 
                 try {
                     const response = await fetch(url, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                        },
+                        body: JSON.stringify({ 
+                            model: "deepseek-chat",
+                            messages: [
+                                { role: "system", content: systemPrompt },
+                                { role: "user", content: userPrompt }
+                            ],
+                            temperature: 0.6
+                        })
                     });
                     
                     const data = await response.json();
                     
                     if (data.error) {
-                        alert("Erro do Google: " + data.error.message);
+                        alert("Erro do DeepSeek: " + data.error.message);
                         setIsGeneratingDoc(false);
                         return;
                     }
 
-                    setBusinessCaseDoc(data.candidates[0].content.parts[0].text);
+                    setBusinessCaseDoc(data.choices[0].message.content);
                 } catch (error) {
                     setBusinessCaseDoc("Ocorreu um erro ao gerar o documento.");
                 } finally {
@@ -184,7 +192,7 @@
             const copyToClipboard = () => {
                 if(businessCaseDoc) {
                     navigator.clipboard.writeText(businessCaseDoc);
-                    alert("Copiado com sucesso! Já pode colar no seu editor de texto.");
+                    alert("Copiado com sucesso! Já pode colar no seu editor.");
                 }
             };
 
@@ -195,7 +203,7 @@
                             <h1 className="text-2xl font-bold flex items-center text-blue-400">
                                 <i className="fas fa-radar mr-2"></i> Radar.AI
                             </h1>
-                            <p className="text-xs text-slate-400 mt-1">DOU & Agências de Fomento</p>
+                            <p className="text-xs text-slate-400 mt-1">DeepSeek Engine V3</p>
                         </div>
                         <nav className="flex-1 px-4 space-y-2 mt-4">
                             <button onClick={() => setActiveTab('busca')} className={`w-full text-left px-4 py-3 rounded-lg flex items-center transition ${activeTab === 'busca' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
@@ -213,7 +221,7 @@
                             <div className="max-w-5xl mx-auto">
                                 <div className="mb-8">
                                     <h2 className="text-3xl font-bold text-slate-800">Radar de Captação</h2>
-                                    <p className="text-slate-500 mt-1">Descreva o seu projeto. O Gemini criará links de busca instantânea para o <b>Diário Oficial, FINEP, FAPESP, CNPq e Sebrae</b>.</p>
+                                    <p className="text-slate-500 mt-1">Descreva o seu projeto. O <b>DeepSeek</b> criará links de busca instantânea focados no ecossistema brasileiro de fomento.</p>
                                 </div>
 
                                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
@@ -222,7 +230,7 @@
                                         rows="5"
                                         value={projectText}
                                         onChange={(e) => setProjectText(e.target.value)}
-                                        placeholder="Ex: Estamos criando um software focado em inteligência artificial para o agronegócio..."
+                                        placeholder="Ex: Estamos criando um software focado em inteligência artificial..."
                                         className="w-full border border-slate-300 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:outline-none mb-4"
                                     ></textarea>
                                     <button 
@@ -231,27 +239,21 @@
                                         className="w-full md:w-auto bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-8 rounded-lg transition-all disabled:opacity-70 flex items-center justify-center"
                                     >
                                         {isSearching ? <i className="fas fa-circle-notch fa-spin mr-2"></i> : <i className="fas fa-magic mr-2"></i>}
-                                        {isSearching ? 'Construindo Radares...' : 'Gerar Buscas (DOU & Agências)'}
+                                        {isSearching ? 'O DeepSeek está pensando...' : 'Gerar Buscas (DOU & Agências)'}
                                     </button>
                                 </div>
 
                                 {aiAnalysis && (
                                     <div className="space-y-8 animate-in fade-in duration-500">
-                                        
-                                        {/* Diagnóstico */}
                                         <div className="bg-blue-50 border border-blue-100 rounded-xl p-6">
-                                            <h3 className="font-bold text-blue-900 mb-2"><i className="fas fa-chart-line mr-2"></i>Análise do Projeto</h3>
+                                            <h3 className="font-bold text-blue-900 mb-2"><i className="fas fa-chart-line mr-2"></i>Análise do DeepSeek</h3>
                                             <p className="text-blue-800 text-sm leading-relaxed">{aiAnalysis.diagnostico}</p>
                                         </div>
 
-                                        {/* Links Mágicos - Agências */}
                                         <div>
                                             <h3 className="text-xl font-bold text-slate-800 mb-4 border-b pb-2">Radares de Busca (Últimos 30 Dias)</h3>
-                                            <p className="text-sm text-slate-500 mb-4">Clique nos botões abaixo. Cada link abrirá o Google vasculhando apenas o site da respectiva agência em busca de termos do seu projeto.</p>
-                                            
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                                 {aiAnalysis.buscas_avancadas.map((busca, idx) => {
-                                                    // Cores diferentes por agência para ficar bonito
                                                     let badgeColor = "bg-slate-100 text-slate-700";
                                                     if(busca.agencia.includes("FINEP")) badgeColor = "bg-blue-100 text-blue-700";
                                                     if(busca.agencia.includes("FAPESP")) badgeColor = "bg-green-100 text-green-700";
@@ -260,7 +262,7 @@
                                                     if(busca.agencia.includes("Diário Oficial")) badgeColor = "bg-red-100 text-red-700";
 
                                                     return (
-                                                        <div key={idx} className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm hover:shadow-md transition flex flex-col">
+                                                        <div key={idx} className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm flex flex-col">
                                                             <div className="mb-2">
                                                                 <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${badgeColor}`}>
                                                                     {busca.agencia}
@@ -284,11 +286,8 @@
                                             </div>
                                         </div>
 
-                                        {/* Geração de Documentos */}
                                         <div className="bg-white p-6 rounded-xl border border-slate-200">
                                             <h3 className="text-xl font-bold text-slate-800 mb-4 border-b pb-2"><i className="fas fa-file-signature mr-2 text-blue-500"></i>Gerar Business Case (Padrão PMI)</h3>
-                                            <p className="text-sm text-slate-500 mb-4">Encontrou um edital clicando nos botões acima? Clique numa das sugestões abaixo ou digite um novo nome para a Inteligência Artificial redigir o seu projeto.</p>
-                                            
                                             <div className="flex flex-wrap gap-3">
                                                 {aiAnalysis.sugestoes_historicas.map((sugestao, idx) => (
                                                     <button 
@@ -320,14 +319,14 @@
                             <div className="max-w-4xl mx-auto h-full flex flex-col">
                                 <div className="mb-6">
                                     <h2 className="text-3xl font-bold text-slate-800"><i className="fas fa-file-contract text-blue-600 mr-2"></i> Documentação do Projeto</h2>
-                                    <p className="text-slate-500">Business Case gerado sob os padrões do Guia PMBOK.</p>
+                                    <p className="text-slate-500">Business Case estruturado pelo modelo DeepSeek V3.</p>
                                 </div>
 
                                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
                                     {isGeneratingDoc ? (
                                         <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
                                             <i className="fas fa-circle-notch fa-spin text-5xl text-blue-600 mb-6"></i>
-                                            <h3 className="text-xl font-bold text-slate-800">O Gemini está escrevendo o projeto...</h3>
+                                            <h3 className="text-xl font-bold text-slate-800">O DeepSeek está escrevendo o projeto...</h3>
                                         </div>
                                     ) : businessCaseDoc ? (
                                         <>
