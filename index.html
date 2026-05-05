@@ -6,19 +6,19 @@
     <title>Fomento.AI | Radar de Editais e Projetos PMI (DeepSeek)</title>
     
     <!-- Tailwind CSS para Estilização Premium -->
-    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- FontAwesome para Ícones -->
-    <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css)">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- React & Babel -->
-    <script crossorigin src="[https://unpkg.com/react@18/umd/react.production.min.js](https://unpkg.com/react@18/umd/react.production.min.js)"></script>
-    <script crossorigin src="[https://unpkg.com/react-dom@18/umd/react-dom.production.min.js](https://unpkg.com/react-dom@18/umd/react-dom.production.min.js)"></script>
-    <script src="[https://unpkg.com/@babel/standalone/babel.min.js](https://unpkg.com/@babel/standalone/babel.min.js)"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- Bibliotecas: Marked (Para formatar texto Markdown) e html2pdf (Para descarregar em PDF) -->
-    <script src="[https://cdn.jsdelivr.net/npm/marked/marked.min.js](https://cdn.jsdelivr.net/npm/marked/marked.min.js)"></script>
-    <script src="[https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js](https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js)"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         /* Estilos adicionais para o documento A4 gerado */
@@ -88,7 +88,7 @@
                 setIsSearching(true);
                 setAiAnalysis(null);
 
-                const url = "[https://api.deepseek.com/chat/completions](https://api.deepseek.com/chat/completions)";
+                const url = "https://api.deepseek.com/chat/completions";
 
                 const systemPrompt = `
                     Atue como um Especialista Sénior em Captação de Recursos e Fomento à Inovação no Brasil.
@@ -126,7 +126,6 @@
                         },
                         body: JSON.stringify({ 
                             model: "deepseek-chat",
-                            // AQUI ESTÁ A CORREÇÃO: Removemos o response_format que o DeepSeek estava a rejeitar
                             messages: [
                                 { role: "system", content: systemPrompt },
                                 { role: "user", content: `Analise detalhadamente este projeto: "${projectText}"` }
@@ -177,7 +176,7 @@
                 setActiveTab('docs');
                 setBusinessCaseDoc(null);
 
-                const url = "[https://api.deepseek.com/chat/completions](https://api.deepseek.com/chat/completions)";
+                const url = "https://api.deepseek.com/chat/completions";
 
                 const systemPrompt = `
                     Atue como um Diretor de Projetos Sénior com certificação PMP.
@@ -259,7 +258,7 @@
                 };
 
                 html2pdf().set(opt).from(element).save().then(() => {
-                    // Feedback visual limpo via Toast ou Console (alert pode ser intrusivo, mas mantido para clareza)
+                    // Feedback visual limpo via Toast ou Console
                     console.log("PDF descarregado com sucesso.");
                 });
             };
