@@ -1,33 +1,23 @@
-// Fomento.AI Radar DeepSeek Tool - React/Babel Application Code
-import React from 'react';
-
-function DeepSeekComponent() {
-    const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
-
-    // Validate API key
-    if (!DEEPSEEK_API_KEY) {
-        console.error('API key is required.');
-        return <div>Please provide a valid API key.</div>;
-    }
-
-    // Original functionality of the radar tool with the two motors:
-    // Search generator motor
-    const searchGenerator = () => {
-        // Search generation logic
-    };
-
-    // Business case generator motor
-    const businessCaseGenerator = () => {
-        // Business case generation logic
-    };
-
-    return (
-        <div>
-            <h1>Fomento.AI Radar DeepSeek</h1>
-            <button onClick={searchGenerator}>Generate Search</button>
-            <button onClick={businessCaseGenerator}>Generate Business Case</button>
-        </div>
-    );
-}
-
-export default DeepSeekComponent;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fomento.AI Radar DeepSeek</title>
+    <script>
+        function validateAPIKey(apiKey) {
+            // Check if the input field is empty
+            if (apiKey.trim() === '') {
+                alert('API key cannot be empty.');
+                return false;
+            }
+            return true;
+        }
+    </script>
+</head>
+<body>
+    <h1>Welcome to Fomento.AI Radar DeepSeek</h1>
+    <input type="text" id="apiKey" placeholder="Enter your API Key">
+    <button onclick="validateAPIKey(document.getElementById('apiKey').value)">Submit</button>
+</body>
+</html>
