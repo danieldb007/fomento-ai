@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fomento.AI | Radar de Editais e Projetos PMI (DeepSeek)</title>
+    <title>Fomento.AI | Radar de Editais e Projetos PMI (DeepSeek v3.1)</title>
     
     <!-- Tailwind CSS para Estilização Premium -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -77,7 +77,7 @@
             const [selectedEditalName, setSelectedEditalName] = useState("");
 
             // ==============================================================================
-            // MOTOR 1: RADAR DE BUSCAS (Integração DeepSeek)
+            // MOTOR 1: RADAR DE BUSCAS (Integração DeepSeek) - LIMPO DE ERROS
             // ==============================================================================
             const analyzeAndGenerateSearches = async () => {
                 if (!projectText.trim()) {
@@ -124,6 +124,7 @@
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
                         },
+                        // O response_format foi removido permanentemente para evitar o erro do servidor
                         body: JSON.stringify({ 
                             model: "deepseek-chat",
                             messages: [
@@ -142,7 +143,7 @@
                         return;
                     }
 
-                    // Prevenção extra caso o DeepSeek devolva o JSON dentro de formatação Markdown
+                    // Extração e limpeza do JSON (Garante que se vier formato Markdown, o código não quebra)
                     let resultText = data.choices[0].message.content;
                     resultText = resultText.replace(/```json/gi, '').replace(/```/g, '').trim();
                     
@@ -157,7 +158,6 @@
             };
 
             const createGoogleSearchLink = (query) => {
-                // Pesquisa restringida aos últimos 3 meses (qdr:m3) para apanhar apenas editais recentes
                 const encodedQuery = encodeURIComponent(query);
                 return `https://www.google.com/search?q=${encodedQuery}&tbs=qdr:m3`; 
             };
@@ -232,7 +232,6 @@
                         return;
                     }
 
-                    // Transforma o Markdown da resposta em HTML elegante usando a biblioteca Marked
                     const markdownText = data.choices[0].message.content;
                     const htmlText = marked.parse(markdownText);
                     setBusinessCaseDoc(htmlText);
@@ -245,7 +244,7 @@
             };
 
             // ==============================================================================
-            // MOTOR 3: EXPORTAÇÃO PARA PDF (html2pdf)
+            // MOTOR 3: EXPORTAÇÃO PARA PDF
             // ==============================================================================
             const exportToPDF = () => {
                 const element = document.getElementById('documento-a4');
@@ -258,7 +257,6 @@
                 };
 
                 html2pdf().set(opt).from(element).save().then(() => {
-                    // Feedback visual limpo via Toast ou Console
                     console.log("PDF descarregado com sucesso.");
                 });
             };
@@ -297,8 +295,8 @@
                         
                         <div className="p-4 hidden md:block">
                             <div className="bg-slate-800 rounded-xl p-4 text-xs text-slate-400 border border-slate-700">
-                                <p><i className="fas fa-microchip text-blue-400 mr-1"></i> Motor de IA ativado</p>
-                                <p className="mt-1 font-semibold text-slate-300">DeepSeek V3 (Chat)</p>
+                                <p><i className="fas fa-microchip text-blue-400 mr-1"></i> Motor de IA</p>
+                                <p className="mt-1 font-semibold text-slate-300">DeepSeek (Versão 3.1)</p>
                             </div>
                         </div>
                     </aside>
@@ -325,7 +323,7 @@
                                             rows="4"
                                             value={projectText}
                                             onChange={(e) => setProjectText(e.target.value)}
-                                            placeholder="Ex: Estamos a desenvolver um software SaaS B2B com Inteligência Artificial para otimizar o setor logístico e reduzir emissões de carbono, precisando de subvenção para a equipa técnica..."
+                                            placeholder="Ex: Estamos a desenvolver um software SaaS B2B com Inteligência Artificial para otimizar o setor logístico e reduzir emissões de carbono..."
                                             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-5 text-slate-700 focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition-all resize-none shadow-inner"
                                         ></textarea>
                                         
@@ -367,7 +365,6 @@
                                             
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                 {aiAnalysis.buscas_avancadas.map((busca, idx) => {
-                                                    // Sistema de Cores Temáticas
                                                     let themeColor = "slate";
                                                     if(busca.agencia.includes("FINEP")) themeColor = "blue";
                                                     if(busca.agencia.includes("FAPESP")) themeColor = "emerald";
@@ -432,7 +429,7 @@
                             </div>
                         )}
 
-                        {/* Ecrã: Visualizador de Documentos (Estilo A4 + Exportar PDF) */}
+                        {/* Ecrã: Visualizador de Documentos */}
                         {activeTab === 'docs' && (
                             <div className="p-6 md:p-10 max-w-5xl mx-auto h-full flex flex-col animate-[fadeIn_0.5s_ease-out]">
                                 <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -441,7 +438,6 @@
                                         <p className="text-lg text-slate-500 mt-2">Business Case gerado sob os rigorosos padrões do Guia PMBOK® e GPM P5.</p>
                                     </div>
                                     
-                                    {/* Botão Premium: Descarregar PDF (Aparece apenas se o doc existir) */}
                                     {businessCaseDoc && !isGeneratingDoc && (
                                         <button 
                                             onClick={exportToPDF} 
@@ -461,14 +457,12 @@
                                         </div>
                                     ) : businessCaseDoc ? (
                                         <div className="relative">
-                                            {/* Folha A4 simulada onde o conteúdo é injetado e do qual o PDF é tirado */}
                                             <div id="documento-a4" className="document-a4 rounded-lg">
                                                 <div className="mb-8 text-center border-b-2 border-slate-800 pb-4">
                                                     <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Candidatura Oficial de Fomento</h4>
                                                     <h3 className="text-xl font-black text-slate-900">{selectedEditalName}</h3>
                                                 </div>
                                                 
-                                                {/* Renderização do HTML convertido a partir do Markdown do DeepSeek */}
                                                 <div 
                                                     className="prose max-w-none"
                                                     dangerouslySetInnerHTML={{ __html: businessCaseDoc }} 
