@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <!-- TAGS ANTI-CACHE PARA FORÇAR A ATUALIZAÇÃO DO GITHUB PAGES -->
+    <!-- TAGS ANTI-CACHE -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>Fomento.AI | Radar de Editais e Projetos PMI (DeepSeek v3.2)</title>
+    <title>Fomento.AI | Radar de Editais e Projetos PMI (DeepSeek v4.0)</title>
     
     <!-- Tailwind CSS para Estilização Premium -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -27,7 +27,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
-        /* Estilos adicionais para o documento A4 gerado */
         .document-a4 {
             background: white;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
@@ -42,7 +41,6 @@
         .prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
         .prose li { margin-bottom: 0.5rem; color: #334155; }
         
-        /* Spinner personalizado */
         .loader {
             border: 4px solid #f3f4f6;
             border-top: 4px solid #2563eb;
@@ -53,7 +51,6 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -66,7 +63,7 @@
 
     <script type="text/babel">
         // ==============================================================================
-        // ⚙️ A SUA CHAVE DO DEEPSEEK (Fornecida)
+        // ⚙️ A SUA CHAVE DO DEEPSEEK
         // ==============================================================================
         const DEEPSEEK_API_KEY = "sk-182e4cc3f3d549228a1ab2210f2cb120";
 
@@ -82,19 +79,25 @@
             const [businessCaseDoc, setBusinessCaseDoc] = useState(null);
             const [selectedEditalName, setSelectedEditalName] = useState("");
 
+            // Estado para o Modo de Diagnóstico Visível
+            const [apiErrorMsg, setApiErrorMsg] = useState("");
+
             // ==============================================================================
-            // MOTOR 1: RADAR DE BUSCAS (Integração DeepSeek) - LIMPO DE ERROS
+            // MOTOR 1: RADAR DE BUSCAS (Integração DeepSeek) - V4.0
             // ==============================================================================
             const analyzeAndGenerateSearches = async () => {
+                setApiErrorMsg(""); // Limpa erros antigos
+
                 if (!projectText.trim()) {
-                    alert("Por favor, descreva o seu projeto antes de gerar o radar.");
+                    setApiErrorMsg("Por favor, descreva o seu projeto antes de gerar o radar.");
                     return;
                 }
 
                 setIsSearching(true);
                 setAiAnalysis(null);
 
-                const url = "https://api.deepseek.com/chat/completions";
+                // Atualizado para o endpoint oficial e estável v1
+                const url = "https://api.deepseek.com/v1/chat/completions";
 
                 const systemPrompt = `
                     Atue como um Especialista Sénior em Captação de Recursos e Fomento à Inovação no Brasil.
@@ -130,7 +133,7 @@
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
                         },
-                        // AQUI ESTÁ A GARANTIA: O response_format não existe neste código.
+                        // Totalmente limpo de comandos de formatação que geram erros
                         body: JSON.stringify({ 
                             model: "deepseek-chat",
                             messages: [
@@ -143,13 +146,14 @@
                     
                     const data = await response.json();
                     
-                    if (data.error) {
-                        alert("Erro da API DeepSeek: " + data.error.message);
+                    // Tratamento rigoroso de erros do DeepSeek (Ex: Falta de Saldo, Rate Limit, etc.)
+                    if (!response.ok || data.error) {
+                        const errMsg = data.error ? data.error.message : "Erro desconhecido HTTP " + response.status;
+                        setApiErrorMsg(`O DeepSeek rejeitou o pedido. Detalhe: ${errMsg}`);
                         setIsSearching(false);
                         return;
                     }
 
-                    // Extração e limpeza do JSON para evitar erros caso a IA envie Markdown
                     let resultText = data.choices[0].message.content;
                     resultText = resultText.replace(/```json/gi, '').replace(/```/g, '').trim();
                     
@@ -157,7 +161,7 @@
                     
                 } catch (error) {
                     console.error("Erro completo:", error);
-                    alert("Ocorreu uma falha ao processar os dados da Inteligência Artificial. Verifique a consola.");
+                    setApiErrorMsg("Falha crítica de comunicação com o servidor DeepSeek. Verifique a consola do navegador.");
                 } finally {
                     setIsSearching(false);
                 }
@@ -169,11 +173,13 @@
             };
 
             // ==============================================================================
-            // MOTOR 2: O GERADOR DE BUSINESS CASE (Padrão PMI & P5 com DeepSeek)
+            // MOTOR 2: O GERADOR DE BUSINESS CASE
             // ==============================================================================
             const generateBusinessCase = async (nomeDoEdital) => {
+                setApiErrorMsg("");
+
                 if (!projectText.trim()) {
-                    alert("Aviso: Volte à aba 'Radar de Editais' e preencha a descrição do seu projeto primeiro.");
+                    setApiErrorMsg("Aviso: Preencha a descrição do seu projeto na aba de Buscas primeiro.");
                     return;
                 }
 
@@ -182,7 +188,7 @@
                 setActiveTab('docs');
                 setBusinessCaseDoc(null);
 
-                const url = "https://api.deepseek.com/chat/completions";
+                const url = "https://api.deepseek.com/v1/chat/completions";
 
                 const systemPrompt = `
                     Atue como um Diretor de Projetos Sénior com certificação PMP.
@@ -193,25 +199,25 @@
                     **Programa de Fomento / Edital Alvo:** [Nome do Edital Fornecido]
 
                     ## 1. Justificativa Estratégica (Business Need)
-                    [Explique a dor do mercado e por que o projeto merece receber fomento financeiro e subvenção.]
+                    [Explique a dor do mercado e por que o projeto merece receber fomento financeiro.]
 
                     ## 2. Análise da Situação e Solução Tecnológica
                     [Descreva a inovação da solução proposta, a metodologia tecnológica e o estado da arte atual.]
 
                     ## 3. Benefícios Esperados e Sustentabilidade (Padrão P5)
-                    [Detalhe de forma objetiva os retornos financeiros, sociais e ambientais (ESG) que o projeto trará.]
+                    [Detalhe os retornos financeiros, sociais e ambientais (ESG).]
 
                     ## 4. Análise de Riscos e Premissas
-                    [Apresente um resumo dos principais riscos tecnológicos, de mercado e de execução do projeto, além das restrições.]
+                    [Resumo dos principais riscos tecnológicos e de mercado.]
 
                     ## 5. Estratégia de Execução e Orçamento
-                    [Indique como o projeto será gerido (ex: ciclos ágeis, Scrum, ou preditivos) e apresente uma sugestão macro das rubricas financeiras.]
+                    [Como o projeto será gerido (Scrum/Ágil/Preditivo) e rubricas macro.]
 
                     ## 6. Critérios de Sucesso do Projeto
-                    [Defina métricas quantitativas ou KPIs claros para a agência de fomento avaliar o encerramento do projeto.]
+                    [Métricas ou KPIs claros.]
                 `;
 
-                const userPrompt = `O utilizador pretende candidatar-se ao edital: "${nomeDoEdital}".\nProjeto da empresa a ser analisado: "${projectText}"`;
+                const userPrompt = `Candidatura ao edital: "${nomeDoEdital}".\nProjeto da empresa a ser analisado: "${projectText}"`;
 
                 try {
                     const response = await fetch(url, {
@@ -232,8 +238,9 @@
                     
                     const data = await response.json();
                     
-                    if (data.error) {
-                        alert("Erro da API DeepSeek: " + data.error.message);
+                    if (!response.ok || data.error) {
+                        const errMsg = data.error ? data.error.message : "Erro HTTP " + response.status;
+                        setApiErrorMsg(`O DeepSeek rejeitou o pedido (Docs). Detalhe: ${errMsg}`);
                         setIsGeneratingDoc(false);
                         return;
                     }
@@ -243,15 +250,12 @@
                     setBusinessCaseDoc(htmlText);
 
                 } catch (error) {
-                    setBusinessCaseDoc("<h2>Ocorreu um erro ao gerar o documento. Verifique a ligação ou a chave API.</h2>");
+                    setApiErrorMsg("Erro de comunicação com o servidor ao gerar o documento.");
                 } finally {
                     setIsGeneratingDoc(false);
                 }
             };
 
-            // ==============================================================================
-            // MOTOR 3: EXPORTAÇÃO PARA PDF
-            // ==============================================================================
             const exportToPDF = () => {
                 const element = document.getElementById('documento-a4');
                 const opt = {
@@ -261,10 +265,7 @@
                     html2canvas:  { scale: 2, useCORS: true },
                     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
                 };
-
-                html2pdf().set(opt).from(element).save().then(() => {
-                    console.log("PDF descarregado com sucesso.");
-                });
+                html2pdf().set(opt).from(element).save();
             };
 
             return (
@@ -283,7 +284,6 @@
                             <button 
                                 onClick={() => setActiveTab('busca')} 
                                 className={`w-full flex items-center justify-center md:justify-start px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === 'busca' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-inner' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                                title="Radar de Editais"
                             >
                                 <i className="fas fa-satellite-dish text-lg md:w-6"></i>
                                 <span className="hidden md:block font-medium ml-3">Radar de Editais</span>
@@ -292,7 +292,6 @@
                             <button 
                                 onClick={() => setActiveTab('docs')} 
                                 className={`w-full flex items-center justify-center md:justify-start px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === 'docs' ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-inner' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                                title="Documentos (PMI)"
                             >
                                 <i className="fas fa-file-invoice text-lg md:w-6"></i>
                                 <span className="hidden md:block font-medium ml-3">Projetos PMI</span>
@@ -302,7 +301,8 @@
                         <div className="p-4 hidden md:block">
                             <div className="bg-slate-800 rounded-xl p-4 text-xs text-slate-400 border border-slate-700">
                                 <p><i className="fas fa-microchip text-blue-400 mr-1"></i> Motor de IA</p>
-                                <p className="mt-1 font-semibold text-slate-300">DeepSeek (Versão 3.2)</p>
+                                <p className="mt-1 font-semibold text-white">DeepSeek V4.0</p>
+                                <p className="text-[10px] mt-1 text-slate-500">Cache-Buster Ativo</p>
                             </div>
                         </div>
                     </aside>
@@ -310,17 +310,27 @@
                     {/* Área Central Principal */}
                     <main className="flex-1 overflow-y-auto bg-slate-50 relative">
                         
+                        {/* ALERTAS DE ERRO VISÍVEIS (DEBUG MODE) */}
+                        {apiErrorMsg && (
+                            <div className="m-6 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-lg shadow-md flex items-start animate-[fadeIn_0.3s_ease-out]">
+                                <i className="fas fa-exclamation-triangle mt-1 mr-3 text-red-500"></i>
+                                <div>
+                                    <h4 className="font-bold">Aviso do Sistema</h4>
+                                    <p className="text-sm">{apiErrorMsg}</p>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Ecrã: Radar de Buscas */}
                         {activeTab === 'busca' && (
                             <div className="p-6 md:p-10 max-w-6xl mx-auto animate-[fadeIn_0.5s_ease-out]">
                                 <header className="mb-10">
                                     <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">Radar de Captação</h2>
-                                    <p className="text-lg text-slate-500 mt-2">A Inteligência Artificial do DeepSeek analisa a sua ideia e cria rotas diretas para os editais abertos no Governo Federal do Brasil.</p>
+                                    <p className="text-lg text-slate-500 mt-2">A IA do DeepSeek analisa a sua ideia e cria rotas diretas para os editais do Brasil.</p>
                                 </header>
 
-                                <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 p-6 md:p-8 mb-8 relative overflow-hidden">
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 mb-8 relative overflow-hidden">
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-0 opacity-50"></div>
-                                    
                                     <div className="relative z-10">
                                         <label className="flex items-center text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider">
                                             <i className="fas fa-lightbulb text-amber-400 mr-2"></i> Descreva a inovação do seu projeto:
@@ -329,7 +339,7 @@
                                             rows="4"
                                             value={projectText}
                                             onChange={(e) => setProjectText(e.target.value)}
-                                            placeholder="Ex: Estamos a desenvolver um software SaaS B2B com Inteligência Artificial para otimizar o setor logístico e reduzir emissões de carbono..."
+                                            placeholder="Ex: Estamos a desenvolver um software SaaS B2B..."
                                             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-5 text-slate-700 focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition-all resize-none shadow-inner"
                                         ></textarea>
                                         
@@ -337,24 +347,20 @@
                                             <button 
                                                 onClick={analyzeAndGenerateSearches}
                                                 disabled={isSearching}
-                                                className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3.5 px-8 rounded-xl transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 flex items-center justify-center transform hover:-translate-y-0.5"
+                                                className="w-full md:w-auto bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 px-8 rounded-xl transition-all duration-300 disabled:opacity-60 flex items-center justify-center transform hover:-translate-y-0.5"
                                             >
                                                 {isSearching ? <i className="fas fa-circle-notch fa-spin mr-2"></i> : <i className="fas fa-bolt mr-2"></i>}
-                                                {isSearching ? 'A Processar Análise via DeepSeek...' : 'Analisar e Criar Radares'}
+                                                {isSearching ? 'A Processar...' : 'Analisar e Criar Radares'}
                                             </button>
                                         </div>
                                     </div>
                                 </div>
 
-                                {aiAnalysis && (
+                                {aiAnalysis && !apiErrorMsg && (
                                     <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
-                                        
-                                        {/* Card de Diagnóstico */}
                                         <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-blue-100/50 rounded-2xl p-6 md:p-8 shadow-sm">
                                             <div className="flex items-start">
-                                                <div className="bg-blue-100 text-blue-600 p-3 rounded-lg mr-4 mt-1">
-                                                    <i className="fas fa-brain text-xl"></i>
-                                                </div>
+                                                <div className="bg-blue-100 text-blue-600 p-3 rounded-lg mr-4 mt-1"><i className="fas fa-brain text-xl"></i></div>
                                                 <div>
                                                     <h3 className="font-bold text-slate-800 text-lg mb-2">Parecer do Especialista (DeepSeek)</h3>
                                                     <p className="text-slate-600 leading-relaxed text-justify">{aiAnalysis.diagnostico}</p>
@@ -362,7 +368,6 @@
                                             </div>
                                         </div>
 
-                                        {/* Grelha de Radares */}
                                         <div>
                                             <div className="flex items-center justify-between mb-6 border-b border-slate-200 pb-3">
                                                 <h3 className="text-2xl font-bold text-slate-800">Radares Dinâmicos</h3>
@@ -389,12 +394,7 @@
                                                             <div className="bg-slate-50 rounded-lg p-3 mb-6 border border-slate-100 flex-grow">
                                                                 <code className="text-[11px] text-slate-500 font-mono break-words">{busca.query}</code>
                                                             </div>
-                                                            <a 
-                                                                href={createGoogleSearchLink(busca.query)} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer"
-                                                                className="block text-center w-full bg-slate-900 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-300"
-                                                            >
+                                                            <a href={createGoogleSearchLink(busca.query)} target="_blank" rel="noopener noreferrer" className="block text-center w-full bg-slate-900 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-300">
                                                                 Vasculhar Agência <i className="fas fa-external-link-alt ml-1 text-sm opacity-80"></i>
                                                             </a>
                                                         </div>
@@ -403,33 +403,21 @@
                                             </div>
                                         </div>
 
-                                        {/* Ação: Gerar Documentos */}
                                         <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm mt-8">
-                                            <h3 className="text-2xl font-bold text-slate-800 mb-2">Transformar em Documento Oficial (PMI)</h3>
-                                            <p className="text-slate-500 mb-6">Encontrou um edital adequado nas pesquisas acima? Selecione uma sugestão histórica ou digite o nome do edital atual para a IA redigir o seu projeto.</p>
+                                            <h3 className="text-2xl font-bold text-slate-800 mb-2">Transformar em Documento (PMI)</h3>
+                                            <p className="text-slate-500 mb-6">Encontrou um edital adequado nas pesquisas acima? Clique numa sugestão ou digite o nome.</p>
                                             
                                             <div className="flex flex-wrap gap-4">
                                                 {aiAnalysis.sugestoes_historicas.map((sugestao, idx) => (
-                                                    <button 
-                                                        key={idx}
-                                                        onClick={() => generateBusinessCase(sugestao)}
-                                                        className="bg-white border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 text-slate-700 hover:text-blue-700 py-2.5 px-5 rounded-xl font-medium transition-all shadow-sm flex items-center"
-                                                    >
+                                                    <button key={idx} onClick={() => generateBusinessCase(sugestao)} className="bg-white border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 text-slate-700 hover:text-blue-700 py-2.5 px-5 rounded-xl font-medium transition-all shadow-sm flex items-center">
                                                         <i className="fas fa-file-alt mr-2 text-blue-500 opacity-70"></i> {sugestao}
                                                     </button>
                                                 ))}
-                                                <button 
-                                                    onClick={() => {
-                                                        const nome = prompt("Introduza o nome ou link do Edital que pretende candidatar-se:");
-                                                        if(nome) generateBusinessCase(nome);
-                                                    }}
-                                                    className="bg-blue-100 hover:bg-blue-200 text-blue-700 py-2.5 px-5 rounded-xl font-bold transition-all border border-blue-200 flex items-center"
-                                                >
+                                                <button onClick={() => { const nome = prompt("Introduza o nome do Edital:"); if(nome) generateBusinessCase(nome); }} className="bg-blue-100 hover:bg-blue-200 text-blue-700 py-2.5 px-5 rounded-xl font-bold transition-all border border-blue-200 flex items-center">
                                                     <i className="fas fa-pen mr-2"></i> Digitar Edital Personalizado
                                                 </button>
                                             </div>
                                         </div>
-
                                     </div>
                                 )}
                             </div>
@@ -441,14 +429,10 @@
                                 <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
                                     <div>
                                         <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">Estúdio de Projetos</h2>
-                                        <p className="text-lg text-slate-500 mt-2">Business Case gerado sob os rigorosos padrões do Guia PMBOK® e GPM P5.</p>
+                                        <p className="text-lg text-slate-500 mt-2">Business Case gerado sob os padrões do Guia PMBOK® e GPM P5.</p>
                                     </div>
-                                    
                                     {businessCaseDoc && !isGeneratingDoc && (
-                                        <button 
-                                            onClick={exportToPDF} 
-                                            className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-green-500/30 flex items-center transition-all transform hover:-translate-y-1"
-                                        >
+                                        <button onClick={exportToPDF} className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg flex items-center transition-all transform hover:-translate-y-1">
                                             <i className="fas fa-file-pdf text-xl mr-2"></i> Descarregar PDF
                                         </button>
                                     )}
@@ -458,32 +442,22 @@
                                     {isGeneratingDoc ? (
                                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 h-96 flex flex-col items-center justify-center text-center p-10">
                                             <div className="loader mb-6"></div>
-                                            <h3 className="text-2xl font-bold text-slate-800">O DeepSeek está a estruturar o Business Case...</h3>
-                                            <p className="text-slate-500 mt-2">A cruzar o seu projeto com as métricas exigidas pelas agências de fomento.</p>
+                                            <h3 className="text-2xl font-bold text-slate-800">A processar o documento...</h3>
                                         </div>
-                                    ) : businessCaseDoc ? (
+                                    ) : businessCaseDoc && !apiErrorMsg ? (
                                         <div className="relative">
                                             <div id="documento-a4" className="document-a4 rounded-lg">
                                                 <div className="mb-8 text-center border-b-2 border-slate-800 pb-4">
-                                                    <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Candidatura Oficial de Fomento</h4>
+                                                    <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Candidatura Oficial</h4>
                                                     <h3 className="text-xl font-black text-slate-900">{selectedEditalName}</h3>
                                                 </div>
-                                                
-                                                <div 
-                                                    className="prose max-w-none"
-                                                    dangerouslySetInnerHTML={{ __html: businessCaseDoc }} 
-                                                />
-                                                
-                                                <div className="mt-16 pt-8 border-t border-slate-200 text-center text-xs text-slate-400 font-mono">
-                                                    Documento gerado confidencialmente por Fomento.AI | Padrão PMI Framework
-                                                </div>
+                                                <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: businessCaseDoc }} />
                                             </div>
                                         </div>
                                     ) : (
                                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 border-dashed h-96 flex flex-col items-center justify-center p-10 text-slate-400">
                                             <i className="fas fa-file-signature text-7xl mb-6 opacity-30 text-slate-300"></i>
                                             <h3 className="text-2xl font-bold text-slate-700">Tela em branco</h3>
-                                            <p className="mt-2 text-center max-w-md">Para gerar uma proposta de subvenção técnica, faça uma pesquisa na aba "Radar de Editais" e selecione uma oportunidade.</p>
                                         </div>
                                     )}
                                 </div>
