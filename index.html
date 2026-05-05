@@ -40,7 +40,7 @@
                     alert("Descreva seu projeto para que a IA saiba o que buscar.");
                     return;
                 }
-                if (GEMINI_API_KEY === "AIzaSyDNf1z_K4IhLaEzXWY8MiTpX6msLJvc1Nw") {
+                if (!GEMINI_API_KEY || GEMINI_API_KEY === "COLE_AQUI_A_SUA_CHAVE_DO_GEMINI") {
                     alert("Por favor, insira sua chave do Gemini no código-fonte.");
                     return;
                 }
@@ -48,17 +48,17 @@
                 setIsSearching(true);
                 setFoundEdicts([]);
 
-                // Atualizado para o modelo 1.5-flash (padrão global gratuito e estável)
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                // Utilizando o modelo suportado e mais robusto para a busca
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
 
                 const prompt = `
                     Atue como um Especialista em Captação de Recursos no Brasil.
                     O usuário tem o seguinte projeto/empresa:
                     "${projectText}"
 
-                    Sua tarefa é usar seu conhecimento atualizado e pesquisar por EDITAIS DE FOMENTO, SUBVENÇÃO OU FINANCIAMENTO ABERTOS RECENTEMENTE no Brasil (ex: FINEP, CNPq, FAPESP, BNDES, Sebrae, FAPs estaduais) que tenham aderência a este projeto.
+                    Sua tarefa é pesquisar na internet por EDITAIS DE FOMENTO, SUBVENÇÃO OU FINANCIAMENTO ABERTOS no Brasil (ex: FINEP, CNPq, FAPESP, BNDES, Sebrae, FAPs) que tenham aderência a este projeto.
 
-                    Retorne EXATAMENTE UM JSON válido (sem formatação markdown em volta) com a seguinte estrutura:
+                    Retorne EXATAMENTE UM JSON válido com a seguinte estrutura (NÃO ADICIONE TEXTO ANTES OU DEPOIS DO JSON, APENAS O ARRAY):
                     [
                         {
                             "title": "Nome do Edital",
@@ -68,7 +68,7 @@
                             "status": "Aberto / Fluxo Contínuo / Previsão"
                         }
                     ]
-                    Liste no máximo 4 opções mais relevantes.
+                    Liste no máximo 4 opções.
                 `;
 
                 try {
@@ -77,26 +77,28 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                             contents: [{ parts: [{ text: prompt }] }],
-                            // Ativa a busca na web nativa do Google para fundamentar a resposta
-                            tools: [{ googleSearchRetrieval: { dynamicRetrievalConfig: { mode: "MODE_DYNAMIC", dynamicThreshold: 0.3 } } }],
+                            // Formato correto para habilitar o Google Search Grounding
+                            tools: [{ "google_search": {} }],
                             generationConfig: { responseMimeType: "application/json" }
                         })
                     });
                     
                     const data = await response.json();
                     
-                    // Adicionado tratamento de erro para mostrar o motivo exato no ecrã
                     if (data.error) {
-                        alert("Erro do Google: " + data.error.message);
+                        alert("Erro do Google API: " + data.error.message);
                         setIsSearching(false);
                         return;
                     }
 
-                    const resultText = data.candidates[0].content.parts[0].text;
+                    // Limpeza robusta do retorno para garantir que o JSON faz o parse sem quebrar a tela
+                    let resultText = data.candidates[0].content.parts[0].text;
+                    resultText = resultText.replace(/```json/gi, '').replace(/```/g, '').trim();
+                    
                     setFoundEdicts(JSON.parse(resultText));
                 } catch (error) {
-                    console.error(error);
-                    alert("Erro na ligação ao servidor. Verifique o console ou a sua chave.");
+                    console.error("Erro completo:", error);
+                    alert("A IA respondeu num formato inesperado ou houve falha na ligação. Verifique o console para detalhes.");
                 } finally {
                     setIsSearching(false);
                 }
@@ -111,8 +113,7 @@
                 setActiveTab('docs');
                 setBusinessCaseDoc(null);
 
-                // Atualizado para o modelo 1.5-flash (padrão global gratuito e estável)
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
 
                 const prompt = `
                     Você é um Gerente de Projetos certificado (PMP).
@@ -158,7 +159,7 @@
                     const data = await response.json();
                     
                     if (data.error) {
-                        alert("Erro do Google: " + data.error.message);
+                        alert("Erro do Google API: " + data.error.message);
                         setIsGeneratingDoc(false);
                         return;
                     }
