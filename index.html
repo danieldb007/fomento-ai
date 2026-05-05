@@ -48,8 +48,8 @@
                 setIsSearching(true);
                 setFoundEdicts([]);
 
-                // Usando a API v1beta que suporta Search Grounding nativo (googleSearchRetrieval)
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+                // Atualizado para o modelo 1.5-flash (padrão global gratuito e estável)
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
                 const prompt = `
                     Atue como um Especialista em Captação de Recursos no Brasil.
@@ -84,11 +84,19 @@
                     });
                     
                     const data = await response.json();
+                    
+                    // Adicionado tratamento de erro para mostrar o motivo exato no ecrã
+                    if (data.error) {
+                        alert("Erro do Google: " + data.error.message);
+                        setIsSearching(false);
+                        return;
+                    }
+
                     const resultText = data.candidates[0].content.parts[0].text;
                     setFoundEdicts(JSON.parse(resultText));
                 } catch (error) {
                     console.error(error);
-                    alert("Erro ao buscar editais. Verifique o console.");
+                    alert("Erro na ligação ao servidor. Verifique o console ou a sua chave.");
                 } finally {
                     setIsSearching(false);
                 }
@@ -103,7 +111,8 @@
                 setActiveTab('docs');
                 setBusinessCaseDoc(null);
 
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+                // Atualizado para o modelo 1.5-flash (padrão global gratuito e estável)
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
                 const prompt = `
                     Você é um Gerente de Projetos certificado (PMP).
@@ -147,6 +156,13 @@
                         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                     });
                     const data = await response.json();
+                    
+                    if (data.error) {
+                        alert("Erro do Google: " + data.error.message);
+                        setIsGeneratingDoc(false);
+                        return;
+                    }
+
                     setBusinessCaseDoc(data.candidates[0].content.parts[0].text);
                 } catch (error) {
                     setBusinessCaseDoc("Ocorreu um erro ao gerar o documento.");
